@@ -78,7 +78,11 @@ class LogStoreController extends Controller
         foreach ($this->externalProducts() as $ext) {
             $key = 'x:' . $ext['category'];
             if (! isset($groups[$key])) {
-                $groups[$key] = ['name' => $ext['category'], 'icon' => null, 'products' => []];
+                $groups[$key] = [
+                    'name' => $ext['category'],
+                    'icon' => \App\Support\PlatformIcon::forText($ext['category']),
+                    'products' => [],
+                ];
             }
             $groups[$key]['products'][] = $ext;
         }
@@ -109,7 +113,7 @@ class LogStoreController extends Controller
                 'name'         => $p['name'],
                 'category'     => $p['category'] ?: __('Accounts'),
                 'category_id'  => 0,
-                'icon'         => null,
+                'icon'         => \App\Support\PlatformIcon::forText($p['name'], $p['category']),
                 'image'        => null,
                 'country'      => null,
                 'flag'         => null,
@@ -244,7 +248,7 @@ class LogStoreController extends Controller
                 'name'         => $ext['name'],
                 'category'     => $ext['category'] ?: __('Accounts'),
                 'category_id'  => 0,
-                'icon'         => null,
+                'icon'         => \App\Support\PlatformIcon::forText($ext['name'], $ext['category']),
                 'image'        => null,
                 'country'      => null,
                 'flag'         => null,
