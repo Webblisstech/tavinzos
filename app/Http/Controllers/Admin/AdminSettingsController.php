@@ -55,6 +55,13 @@ class AdminSettingsController extends Controller
         'payment.fee_percent'        => ['float',  'Payments', 'Processing fee (%)', 'Optional fee added to top-ups. 0 for none.', 'number'],
         'payment.min_topup_note'     => ['string', 'Payments', 'Deposit note', 'A short line shown under the deposit form.', 'text'],
 
+        // ── Theme (look & feel) ───────────────────────────────────────
+        'theme.primary'              => ['string', 'Theme', 'Primary color', 'Buttons, links, the brand mark. Hex, e.g. #D91F2C.', 'color'],
+        'theme.accent'              => ['string', 'Theme', 'Accent color', 'Secondary highlights. Hex.', 'color'],
+        'theme.font'                => ['string', 'Theme', 'Font family', 'The main UI font.', 'select:Bricolage Grotesque,Inter,Poppins,Manrope,DM Sans,Sora,Outfit,Plus Jakarta Sans'],
+        'theme.font_scale'          => ['string', 'Theme', 'Font size', 'Overall text size.', 'select:small,normal,large'],
+        'theme.radius'              => ['string', 'Theme', 'Corner rounding', 'How round cards and buttons are.', 'select:tight,normal,round'],
+
         // ── Support ───────────────────────────────────────────────────
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
         'support.email'              => ['string', 'Support', 'Support email', 'Where customers can reach you.', 'text'],

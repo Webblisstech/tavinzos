@@ -88,6 +88,14 @@
                                         <option value="{{ $opt }}" @selected($f['value'] === $opt)>{{ ucfirst($opt) }}</option>
                                     @endforeach
                                 </select>
+                            @elseif ($f['input'] === 'color')
+                                @php $cval = preg_match('/^#?[0-9a-fA-F]{6}$/', (string) $f['value']) ? '#'.ltrim((string)$f['value'],'#') : '#D91F2C'; @endphp
+                                <div class="mt-1.5 flex items-center gap-2" data-color-group>
+                                    <input type="color" value="{{ $cval }}" data-color-swatch
+                                           class="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-ink-300 bg-transparent p-1 dark:border-ink-700">
+                                    <input id="{{ $name }}" name="{{ $name }}" value="{{ $cval }}" data-color-hex maxlength="7"
+                                           class="h-11 w-full rounded-xl border-ink-300 font-mono text-[13.5px] uppercase dark:border-ink-700 dark:bg-ink-900">
+                                </div>
                             @else
                                 <input id="{{ $name }}" name="{{ $name }}"
                                        type="{{ $f['input'] === 'number' ? 'number' : 'text' }}"
@@ -127,6 +135,17 @@
         }
         tabs.forEach(function (t) { t.addEventListener('click', function () { activate(t.dataset.tab); }); });
         if (tabs.length) activate(tabs[0].dataset.tab);
+
+        // Color pickers: keep the swatch and the hex field in sync.
+        document.querySelectorAll('[data-color-group]').forEach(function (g) {
+            var sw = g.querySelector('[data-color-swatch]');
+            var hex = g.querySelector('[data-color-hex]');
+            sw.addEventListener('input', function () { hex.value = sw.value.toUpperCase(); });
+            hex.addEventListener('input', function () {
+                var v = hex.value.trim();
+                if (/^#?[0-9a-fA-F]{6}$/.test(v)) sw.value = '#' + v.replace('#', '');
+            });
+        });
     })();
 </script>
 @endpush

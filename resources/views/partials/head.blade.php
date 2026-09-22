@@ -2,35 +2,38 @@
      motion system and component classes. Included by every layout so
      the two shells can never drift apart. --}}
     {{-- Fonts --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap">
-
     {{-- Tailwind (CDN) --}}
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script>
+@php $theme = \App\Support\Theme::tokens(); @endphp
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="{{ $theme['font_url'] }}">
+        <style>:root { --app-radius: {{ $theme['radius'] }}; } html { font-size: {{ $theme['scale'] }}; }</style>
+        <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Bricolage Grotesque', 'Trebuchet MS', 'system-ui', 'sans-serif'],
+                        sans: [{!! collect(explode(',', $theme['font_stack']))->map(fn($f) => "'".trim($f, " '")."'")->implode(', ') !!}],
                         mono: ['DM Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
                     },
+                    borderRadius: { DEFAULT: 'var(--app-radius)' },
                     colors: {
                         brand: {
-                            50:  '#fef2f3',
-                            100: '#fde3e5',
-                            200: '#fbc9cd',
-                            300: '#f7a1a8',
-                            400: '#f06a75',
-                            500: '#e5323f',
-                            600: '#d91f2c',
-                            700: '#b01722',
-                            800: '#921520',
-                            900: '#7a161f'
+                            50:  '{{ $theme['brand'][50] }}',
+                            100: '{{ $theme['brand'][100] }}',
+                            200: '{{ $theme['brand'][200] }}',
+                            300: '{{ $theme['brand'][300] }}',
+                            400: '{{ $theme['brand'][400] }}',
+                            500: '{{ $theme['brand'][500] }}',
+                            600: '{{ $theme['brand'][600] }}',
+                            700: '{{ $theme['brand'][700] }}',
+                            800: '{{ $theme['brand'][800] }}',
+                            900: '{{ $theme['brand'][900] }}'
                         },
+                        accent: '{{ $theme['accent'] }}',
                         ink: {
                             50:  '#faf7f7',
                             100: '#f4efef',
