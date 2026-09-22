@@ -31,15 +31,41 @@ class Theme
         };
 
         return [
-            'brand'      => self::scale($primary),
-            'primary'    => $primary,
-            'accent'     => $accent,
-            'font'       => $font,
-            'font_stack' => "'{$font}', 'Trebuchet MS', system-ui, sans-serif",
-            'font_url'   => 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $font) . ':wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap',
-            'scale'      => $scale,
-            'radius'     => $radius,
+            'brand'        => self::scale($primary),
+            'primary'      => $primary,
+            'accent'       => $accent,
+            'accent_hover' => self::shade($accent, -0.10),
+            'accent_active'=> self::shade($accent, -0.18),
+            'accent_text'  => self::readableOn($accent),
+            'font'         => $font,
+            'font_stack'   => "'{$font}', 'Trebuchet MS', system-ui, sans-serif",
+            'font_url'     => 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $font) . ':wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap',
+            'scale'        => $scale,
+            'radius'       => $radius,
         ];
+    }
+
+    /** Darken (t<0) or lighten (t>0) a hex color by a fraction. */
+    private static function shade(string $hex, float $t): string
+    {
+        [$r, $g, $b] = self::rgb($hex);
+        if ($t < 0) {
+            $f = 1 + $t;
+            return sprintf('#%02x%02x%02x', (int) round($r * $f), (int) round($g * $f), (int) round($b * $f));
+        }
+        return sprintf('#%02x%02x%02x',
+            (int) round($r + (255 - $r) * $t),
+            (int) round($g + (255 - $g) * $t),
+            (int) round($b + (255 - $b) * $t));
+    }
+
+    /** Black or white text, whichever reads better on the given background. */
+    private static function readableOn(string $hex): string
+    {
+        [$r, $g, $b] = self::rgb($hex);
+        // Perceived luminance.
+        $lum = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+        return $lum > 0.6 ? '#14100f' : '#ffffff';
     }
 
     /** Build a 50–900 scale by tinting/shading a base hex. */

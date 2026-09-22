@@ -8,7 +8,13 @@
     <link rel="stylesheet" href="{{ $theme['font_url'] }}">
 
     {{-- Theme tokens --}}
-    <style>:root { --app-radius: {{ $theme['radius'] }}; } html { font-size: {{ $theme['scale'] }}; }</style>
+    <style>:root {
+        --app-radius: {{ $theme['radius'] }};
+        --accent: {{ $theme['accent'] }};
+        --accent-hover: {{ $theme['accent_hover'] }};
+        --accent-active: {{ $theme['accent_active'] }};
+        --accent-text: {{ $theme['accent_text'] }};
+    } html { font-size: {{ $theme['scale'] }}; }</style>
 
     {{-- Tailwind (CDN) --}}
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -150,6 +156,15 @@
                 @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4
                        text-[13px] font-semibold text-white transition hover:bg-brand-700 active:bg-brand-800;
             }
+            /* Secondary / accent button — uses the admin's accent color. */
+            .btn-accent {
+                @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4
+                       text-[13px] font-semibold transition;
+                background-color: var(--accent);
+                color: var(--accent-text);
+            }
+            .btn-accent:hover { background-color: var(--accent-hover); }
+            .btn-accent:active { background-color: var(--accent-active); }
             .btn-ghost {
                 @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-ink-300 px-4
                        text-[13px] font-semibold transition hover:bg-ink-100
