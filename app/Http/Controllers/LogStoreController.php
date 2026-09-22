@@ -128,7 +128,9 @@ class LogStoreController extends Controller
     /** External price → our retail (FX rate + markup, admin-set). */
     private function externalRetail(float $providerPrice): array
     {
-        $rate  = (float) $this->setting('shopvia.rate', 1);
+        // Their prices are in USD; default to the numbers USD rate if the admin
+        // hasn't set a specific one, so a $3.30 account isn't sold for ₦3.30.
+        $rate  = (float) $this->setting('shopvia.rate', (float) $this->setting('numbers.currency.usd_rate', 1600));
         $mode  = (string) $this->setting('shopvia.markup_mode', $this->setting('numbers.markup.mode', 'percent'));
         $value = (float) $this->setting('shopvia.markup_value', $this->setting('numbers.markup.value', 35));
 
