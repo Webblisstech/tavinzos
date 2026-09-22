@@ -73,15 +73,190 @@ class LogStoreController extends Controller
         $order = $catRows->keys()->push(0)->all();
         uksort($groups, fn ($a, $b) => array_search($a, $order) <=> array_search($b, $order));
 
+        // Merge in the external catalog — presented identically, so the customer
+        // can't tell it apart from our own stock. Grouped by its category name.
+        foreach ($this->externalProducts() as $ext) {
+            $key = 'x:' . $ext['category'];
+            if (! isset($groups[$key])) {
+                $groups[$key] = ['name' => $ext['category'], 'icon' => null, 'products' => []];
+            }
+            $groups[$key]['products'][] = $ext;
+        }
+
         return view('logs.index', [
             'groups'  => $groups,
             'balance' => $this->money((float) $request->user()->wallet_balance),
         ]);
     }
 
+    /**
+     * External catalog products, shaped exactly like our own so the store view
+     * renders them the same. A hidden 'source' + 'ext_id' route the buy to the
+     * pass-through endpoint. Never reveals the provider.
+     */
+    private function externalProducts(): array
+    {
+        if (! (bool) $this->setting('store.external_enabled', true)) {
+            return [];
+        }
+
+        return collect(\App\Support\ShopVia::products())
+            ->filter(fn ($p) => $p['stock'] > 0)
+            ->map(fn ($p) => [
+                'slug'         => 'x-' . $p['id'],          // synthetic slug
+                'source'       => 'ext',                     // marks the buy route
+                'ext_id'       => $p['id'],
+                'name'         => $p['name'],
+                'category'     => $p['category'] ?: __('Accounts'),
+                'category_id'  => 0,
+                'icon'         => null,
+                'image'        => null,
+                'country'      => null,
+                'flag'         => null,
+                'description'  => $p['note'] ?? null,
+                'instructions' => null,
+                'price'        => $this->externalRetail($p['price']),
+                'max'          => min(100, $p['stock']),
+                'stock'        => $p['stock'],
+                'pre_order'    => false,
+                'previewable'  => false,
+                'has_previews' => false,
+            ])
+            ->values()->all();
+    }
+
+    /** External price → our retail (FX rate + markup, admin-set). */
+    private function externalRetail(float $providerPrice): array
+    {
+        $rate  = (float) $this->setting('shopvia.rate', 1);
+        $mode  = (string) $this->setting('shopvia.markup_mode', $this->setting('numbers.markup.mode', 'percent'));
+        $value = (float) $this->setting('shopvia.markup_value', $this->setting('numbers.markup.value', 35));
+
+        $local = $providerPrice * $rate;
+        $price = $mode === 'flat' ? $local + $value : $local * (1 + $value / 100);
+
+        return $this->money(round($price, (int) $this->setting('numbers.currency.decimals')));
+    }
+
+    /**
+     * Buy an external-catalog product: debit the wallet (locked), call the
+     * provider, deliver what it returns, refund on failure. Returns the same
+     * shape as a normal store purchase so the frontend receipt works, and never
+     * reveals the provider.
+     */
+    private function purchaseExternal(Request $request, string $extId, int $amount): JsonResponse
+    {
+        $amount = max(1, min(100, $amount));
+
+        $product = collect(\App\Support\ShopVia::products())->firstWhere('id', $extId);
+        if (! $product) {
+            return $this->fail('That product is no longer available.', 404);
+        }
+        if ($product['stock'] < $amount) {
+            return $this->fail('Not enough stock. Only ' . $product['stock'] . ' left.', 422);
+        }
+
+        $unit  = $this->externalRetail($product['price'])['amount'];
+        $total = round($unit * $amount, 2);
+        $user  = $request->user();
+
+        // Debit first, locked.
+        try {
+            $balanceAfter = DB::transaction(function () use ($user, $total, $product) {
+                $u = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+                if ((float) $u->wallet_balance < $total) {
+                    throw new InsufficientFunds((float) $u->wallet_balance);
+                }
+                $after = round((float) $u->wallet_balance - $total, 2);
+                DB::table('users')->where('id', $user->id)->update(['wallet_balance' => $after]);
+                DB::table('wallet_transactions')->insert([
+                    'user_id' => $user->id, 'reference' => 'AC' . strtoupper(\Illuminate\Support\Str::random(9)),
+                    'type' => 'purchase', 'status' => 'settled', 'amount' => -$total,
+                    'balance_after' => $after, 'currency' => (string) $this->setting('numbers.currency.code', 'NGN'),
+                    'note' => $product['name'], 'created_at' => now(), 'updated_at' => now(),
+                ]);
+                return $after;
+            });
+        } catch (InsufficientFunds $e) {
+            return response()->json([
+                'success' => false, 'code' => 'INSUFFICIENT_FUNDS',
+                'message' => __('Short by :gap. This costs :price and your balance is :have.', [
+                    'gap' => $this->format(max(0, $total - $e->balance)),
+                    'price' => $this->format($total), 'have' => $this->format($e->balance),
+                ]),
+            ], 422);
+        }
+
+        // Call the provider.
+        $result = \App\Support\ShopVia::buy($extId, $amount);
+
+        if (! $result['ok']) {
+            // Refund — provider didn't deliver.
+            DB::transaction(function () use ($user, $total, $product) {
+                $u = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+                $after = round((float) $u->wallet_balance + $total, 2);
+                DB::table('users')->where('id', $user->id)->update(['wallet_balance' => $after]);
+                DB::table('wallet_transactions')->insert([
+                    'user_id' => $user->id, 'reference' => 'ACR' . strtoupper(\Illuminate\Support\Str::random(8)),
+                    'type' => 'refund', 'status' => 'settled', 'amount' => $total,
+                    'balance_after' => $after, 'currency' => (string) $this->setting('numbers.currency.code', 'NGN'),
+                    'note' => 'Refund: ' . $product['name'], 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            });
+            return $this->fail(__('This purchase could not be completed and you have not been charged. Please try again.'), 422);
+        }
+
+        // Delivered — save the order with the accounts.
+        $ref = 'AC' . strtoupper(\Illuminate\Support\Str::random(10));
+        DB::table('log_orders')->insert([
+            'reference' => $ref, 'user_id' => $user->id, 'product_name' => $product['name'],
+            'quantity' => $amount, 'unit_price' => $unit, 'total' => $total,
+            'currency' => (string) $this->setting('numbers.currency.code', 'NGN'),
+            'status' => 'delivered',
+            'meta' => json_encode(['s' => 'x', 't' => $result['trans_id']]),  // opaque
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        \App\Support\Referral::recordSpend($user->id, $total);
+        Cache::forget('shopvia:products');
+
+        return $this->ok([
+            'ref'      => $ref,
+            'quantity' => $amount,
+            'total'    => $this->money($total),
+            'balance'  => $this->money($balanceAfter),
+            'items'    => $result['accounts'],   // ["login|pass", ...] shown on screen
+        ], 201);
+    }
+
     /** The buy modal's live detail — fresh stock, in case it moved. */
     public function show(Request $request, string $slug): JsonResponse
     {
+        // External-catalog product — return its live detail in the same shape.
+        if (\Illuminate\Support\Str::startsWith($slug, 'x-')) {
+            $ext = collect(\App\Support\ShopVia::products())->firstWhere('id', substr($slug, 2));
+            abort_unless($ext, 404);
+            return $this->ok([
+                'slug'         => $slug,
+                'source'       => 'ext',
+                'name'         => $ext['name'],
+                'category'     => $ext['category'] ?: __('Accounts'),
+                'category_id'  => 0,
+                'icon'         => null,
+                'image'        => null,
+                'country'      => null,
+                'flag'         => null,
+                'description'  => $ext['note'] ?? null,
+                'instructions' => null,
+                'price'        => $this->externalRetail($ext['price']),
+                'max'          => min(100, $ext['stock']),
+                'stock'        => $ext['stock'],
+                'pre_order'    => false,
+                'previewable'  => false,
+                'has_previews' => false,
+            ]);
+        }
+
         $product = DB::table('log_products')
             ->where('log_products.slug', $slug)
             ->where('log_products.is_active', true)
@@ -144,6 +319,16 @@ class LogStoreController extends Controller
             'tokens.*' => ['string', 'size:20'],
             'delivery' => ['nullable', 'in:screen,file'],
         ]);
+
+        // External-catalog products carry an "x-<id>" slug — buy them through
+        // the pass-through provider (customer never learns the difference).
+        if (\Illuminate\Support\Str::startsWith($data['slug'], 'x-')) {
+            return $this->purchaseExternal(
+                $request,
+                substr($data['slug'], 2),
+                (int) ($data['quantity'] ?? 1)
+            );
+        }
 
         // Either the customer picked specific previewed items, or they asked
         // for a plain quantity from the pool. Chosen tokens win.

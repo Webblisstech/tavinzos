@@ -32,7 +32,26 @@ class NumberOverrides
     {
         Cache::forget(self::KEY);
     }
+/**
+ * Is this specific price tier blocked? Target format: "countryId:serviceCode:tier",
+ * where tier is the upstream route handle, or the tier's index when it has none.
+ */
+public static function tierBlocked(int $country, ?string $service, string|int|null $tier): bool
+{
+    if ($tier === null || $service === null) {
+        return false;
+    }
 
+    $key = mb_strtolower($country . ':' . trim($service) . ':' . trim((string) $tier));
+
+    foreach (self::rules() as $r) {
+        if ($r['type'] === 'block_tier'
+            && mb_strtolower(trim((string) $r['target'])) === $key) {
+            return true;
+        }
+    }
+    return false;
+}
     /** Is this service blocked? Matches its name OR code, case-insensitive. */
     public static function serviceBlocked(?string $name, ?string $code = null): bool
     {

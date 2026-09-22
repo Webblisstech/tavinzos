@@ -74,6 +74,10 @@ class AdminSettingsController extends Controller
         'gateway.numbers_key'        => ['secret', 'Gateways', 'Numbers API key', 'Your DaisySim / numbers provider key.', 'secret'],
         'gateway.numbers_usa_base'   => ['string', 'Gateways', 'Numbers USA base URL', 'USA pool endpoint.', 'text'],
         'gateway.numbers_global_base'=> ['string', 'Gateways', 'Numbers global base URL', 'All-countries endpoint.', 'text'],
+        'gateway.shopvia_key'        => ['secret', 'Gateways', 'ShopVia (accounts) API key', 'Reseller account-store key.', 'secret'],
+        'shopvia.rate'               => ['float',  'Gateways', 'ShopVia price rate', 'Multiply their price by this to get local currency.', 'number'],
+        'shopvia.markup_mode'        => ['string', 'Gateways', 'ShopVia markup mode', 'percent or flat.', 'select:percent,flat'],
+        'shopvia.markup_value'       => ['float',  'Gateways', 'ShopVia markup value', 'Percent (e.g. 35) or flat amount.', 'number'],
 
         // ── Support ───────────────────────────────────────────────────
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
@@ -184,6 +188,26 @@ class AdminSettingsController extends Controller
     }
 
     /** Dots aren't valid in HTML name attributes cleanly; use underscores. */
+    /**
+     * Reveal a single secret's stored value on demand (admin-only). Keeps
+     * secrets out of the page HTML by default while letting an admin view one
+     * when they need to check it. Only keys marked 'secret' in the schema can
+     * be revealed.
+     */
+    public function reveal(Request $request)
+    {
+        $key = (string) $request->query('key');
+
+        $meta = self::SCHEMA[$key] ?? null;
+        if (! $meta || ($meta[0] ?? null) !== 'secret') {
+            abort(404);
+        }
+
+        $value = DB::table('settings')->where('key', $key)->value('value');
+
+        return response()->json(['value' => (string) $value]);
+    }
+
     private function field(string $key): string
     {
         return str_replace('.', '__', $key);

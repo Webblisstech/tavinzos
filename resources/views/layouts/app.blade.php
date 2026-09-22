@@ -221,7 +221,7 @@
                     <span class="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-ink-900 text-[12px] font-bold text-white dark:bg-ink-100 dark:text-ink-900">{{ $initials }}</span>
                     <span class="hidden text-left leading-tight sm:block">
                         <span class="block text-[12.5px] font-semibold">{{ $userName }}</span>
-                        <span class="block text-[11px] text-ink-500 dark:text-ink-400">{{ __('Reseller · Tier 2') }}</span>
+                        <span class="block text-[11px] text-ink-500 dark:text-ink-400">{{ __('Member') }}</span>
                     </span>
                     <svg class="hidden h-4 w-4 text-ink-500 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </button>

@@ -153,6 +153,7 @@ Route::middleware('admin')->prefix('admin/numbers')->name('admin.numbers.')->gro
 Route::middleware('admin')->prefix('admin/settings')->name('admin.settings.')->group(function () {
     Route::get('/', [AdminSettingsController::class, 'edit'])->name('index');
     Route::put('/', [AdminSettingsController::class, 'update'])->name('update');
+    Route::get('/reveal', [AdminSettingsController::class, 'reveal'])->name('reveal');
 });
 
 Route::middleware('admin')->prefix('admin/orders')->name('admin.orders.')->group(function () {

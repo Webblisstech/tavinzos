@@ -51,6 +51,11 @@ class Gateway
         return self::val('gateway.numbers_global_base', (string) config('services.numbers.global.base'));
     }
 
+    public static function shopviaKey(): string
+    {
+        return self::val('gateway.shopvia_key', (string) env('SHOPVIA_KEY', ''));
+    }
+
     /** Setting value if non-empty, else the fallback. */
     private static function val(string $key, string $fallback): string
     {
