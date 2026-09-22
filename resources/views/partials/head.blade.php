@@ -1,16 +1,18 @@
 {{-- Shared <head> assets: fonts, Tailwind config, design tokens, the
      motion system and component classes. Included by every layout so
      the two shells can never drift apart. --}}
-    {{-- Fonts --}}
+@php $theme = \App\Support\Theme::tokens(); @endphp
+    {{-- Fonts (admin-chosen) --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{{ $theme['font_url'] }}">
+
+    {{-- Theme tokens --}}
+    <style>:root { --app-radius: {{ $theme['radius'] }}; } html { font-size: {{ $theme['scale'] }}; }</style>
+
     {{-- Tailwind (CDN) --}}
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script>
-@php $theme = \App\Support\Theme::tokens(); @endphp
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="{{ $theme['font_url'] }}">
-        <style>:root { --app-radius: {{ $theme['radius'] }}; } html { font-size: {{ $theme['scale'] }}; }</style>
-        <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
