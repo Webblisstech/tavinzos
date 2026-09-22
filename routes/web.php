@@ -139,6 +139,23 @@ Route::middleware('admin')->prefix('admin/transactions')->name('admin.transactio
     Route::get('/{ref}', [AdminTransactionController::class, 'show'])->name('show');
 });
 
+Route::middleware('admin')->get('admin/accounts-debug', function () {
+    $key    = \App\Support\Gateway::shopviaKey();
+    $base   = \App\Support\Gateway::shopviaBase();
+    $raw    = \Illuminate\Support\Facades\Http::acceptJson()->timeout(20)
+                ->get(rtrim($base,'/').'/products.php', ['api_key' => $key]);
+    $mapped = \App\Support\ShopVia::products(true);   // fresh
+    return response()->json([
+        'key_set'      => $key !== '',
+        'key_preview'  => $key ? substr($key,0,6).'…'.substr($key,-4) : null,
+        'base'         => $base,
+        'http_status'  => $raw->status(),
+        'raw_response' => $raw->json() ?? $raw->body(),
+        'mapped_count' => count($mapped),
+        'mapped_sample'=> array_slice($mapped, 0, 3),
+    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+})->name('admin.accounts-debug');
+
 Route::middleware('admin')->prefix('admin/numbers')->name('admin.numbers.')->group(function () {
     Route::get('/', [NumberOverrideController::class, 'index'])->name('index');
     Route::post('/', [NumberOverrideController::class, 'store'])->name('store');
