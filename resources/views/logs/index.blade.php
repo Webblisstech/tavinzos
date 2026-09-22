@@ -86,9 +86,9 @@
 
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-[12.5px] font-bold tracking-[-0.01em] text-ink-900 dark:text-ink-50">{{ $p['name'] }}</p>
-                            <p class="truncate text-[10.5px] font-medium text-ink-500 dark:text-ink-400">
-                                @if ($p['country']){{ $p['country'] }} · @endif{{ $p['category'] }}
-                            </p>
+                            @if ($p['country'])
+                                <p class="truncate text-[10.5px] font-medium text-ink-500 dark:text-ink-400">{{ $p['country'] }}</p>
+                            @endif
                         </div>
 
                         @if ($p['pre_order'] && $p['stock'] === 0)
