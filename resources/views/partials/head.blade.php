@@ -149,14 +149,35 @@
             .lift:hover { transform: none; }
         }
         @layer components {
+            /* All buttons use the accent (secondary) color. This targets only
+               button/submit elements carrying bg-brand-600, so the logo tile,
+               badges and hero panels that also use brand-600 keep the brand
+               color — only clickable buttons switch to accent. */
+            button.bg-brand-600,
+            a.bg-brand-600,
+            input[type="submit"].bg-brand-600,
+            [type="button"].bg-brand-600 {
+                background-color: var(--accent) !important;
+                color: var(--accent-text) !important;
+            }
+            button.bg-brand-600:hover,
+            a.bg-brand-600:hover,
+            input[type="submit"].bg-brand-600:hover,
+            [type="button"].bg-brand-600:hover {
+                background-color: var(--accent-hover) !important;
+            }
             .card {
                 @apply rounded-2xl border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-950;
             }
             .btn-primary {
-                @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4
-                       text-[13px] font-semibold text-white transition hover:bg-brand-700 active:bg-brand-800;
+                @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4
+                       text-[13px] font-semibold transition;
+                background-color: var(--accent);
+                color: var(--accent-text);
             }
-            /* Secondary / accent button — uses the admin's accent color. */
+            .btn-primary:hover { background-color: var(--accent-hover); }
+            .btn-primary:active { background-color: var(--accent-active); }
+            /* Alias so either class works */
             .btn-accent {
                 @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4
                        text-[13px] font-semibold transition;
