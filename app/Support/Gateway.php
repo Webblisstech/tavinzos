@@ -55,6 +55,10 @@ class Gateway
     {
         return self::val('gateway.shopvia_key', (string) env('SHOPVIA_KEY', ''));
     }
+    public static function shopviaBase(): string
+    {
+        return self::val('gateway.shopvia_base', (string) env('SHOPVIA_BASE', 'https://shopviaclone22.com/api'));
+    }
 
     /** Setting value if non-empty, else the fallback. */
     private static function val(string $key, string $fallback): string
