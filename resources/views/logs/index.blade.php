@@ -60,7 +60,7 @@
                 <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/15">
                     @include('partials.brand-icon', ['icon' => $g['icon'] ?? '', 'class' => 'h-[18px] w-[18px]'])
                 </span>
-                <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ $g['name'] }}</h3>
+                <h3 class="text-[13px] font-bold tracking-[-0.02em]">{{ $g['name'] }}</h3>
                 <span class="ml-auto rounded-lg bg-white/15 px-2 py-0.5 text-[11px] font-bold">{{ count($g['products']) }}</span>
             </div>
 
@@ -85,8 +85,8 @@
                         </span>
 
                         <div class="min-w-0 flex-1">
-                            <p class="truncate text-[13.5px] font-bold tracking-[-0.01em] text-ink-900 dark:text-ink-50">{{ $p['name'] }}</p>
-                            <p class="text-[11.5px] font-medium text-ink-500 dark:text-ink-400">
+                            <p class="truncate text-[12.5px] font-bold tracking-[-0.01em] text-ink-900 dark:text-ink-50">{{ $p['name'] }}</p>
+                            <p class="truncate text-[10.5px] font-medium text-ink-500 dark:text-ink-400">
                                 @if ($p['country']){{ $p['country'] }} · @endif{{ $p['category'] }}
                             </p>
                         </div>
@@ -101,12 +101,12 @@
                             </span>
                         @endif
 
-                        <span class="shrink-0 font-mono text-[15px] font-semibold text-brand-600 dark:text-brand-400">{{ $p['price']['formatted'] }}</span>
+                        <span class="shrink-0 font-mono text-[13.5px] font-bold text-brand-600 dark:text-brand-400">{{ $p['price']['formatted'] }}</span>
 
                         <button type="button"
                                 data-buy="{{ $p['slug'] }}"
                                 @disabled(!$p['pre_order'] && $p['stock'] === 0)
-                                class="shrink-0 rounded-lg px-4 py-2 text-[12.5px] font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40 {{ $p['pre_order'] && $p['stock'] === 0 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-600 hover:bg-brand-700' }}">
+                                class="shrink-0 rounded-lg px-3.5 py-1.5 text-[11.5px] font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40 {{ $p['pre_order'] && $p['stock'] === 0 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-600 hover:bg-brand-700' }}">
                             {{ $p['pre_order'] && $p['stock'] === 0 ? __('Pre-order') : __('Buy') }}
                         </button>
                     </article>
