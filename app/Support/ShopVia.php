@@ -55,29 +55,39 @@ class ShopVia
         if ($fresh) {
             Cache::forget('shopvia:products');
         }
-        return Cache::remember('shopvia:products', 300, function () {
-            $raw = self::get('products.php');
-            if (! $raw) {
-                return [];
-            }
 
-            // The payload may be a flat list, or grouped by category. Flatten
-            // whatever shape it is into a list of product rows.
-            $rows = self::flattenProducts($raw);
+        // Serve from cache only if we have a non-empty result. An empty result
+        // (failed fetch, no key yet) is NOT cached, so it retries next time
+        // instead of showing nothing for 5 minutes.
+        $cached = Cache::get('shopvia:products');
+        if (is_array($cached) && count($cached) > 0) {
+            return $cached;
+        }
 
-            return collect($rows)->map(function ($p) {
-                return [
-                    'id'       => (string) self::pick($p, ['id', 'product_id', 'ID']),
-                    'name'     => (string) self::pick($p, ['name', 'title', 'ten', 'product_name'], 'Account'),
-                    'category' => (string) self::pick($p, ['category', 'category_name', 'danh_muc', 'cat'], 'Accounts'),
-                    'price'    => (float) self::pick($p, ['price', 'gia', 'cost'], 0),
-                    // Their stock field is "amount".
-                    'stock'    => (int) self::pick($p, ['amount', 'stock', 'so_luong', 'quantity', 'available', 'inventory'], 0),
-                    'note'     => (string) self::pick($p, ['description', 'note', 'mo_ta', 'desc'], ''),
-                    'raw'      => $p,
-                ];
-            })->filter(fn ($p) => $p['id'] !== '')->values()->all();
-        });
+        $raw = self::get('products.php');
+        if (! $raw) {
+            return [];
+        }
+
+        $rows = self::flattenProducts($raw);
+
+        $mapped = collect($rows)->map(function ($p) {
+            return [
+                'id'       => (string) self::pick($p, ['id', 'product_id', 'ID']),
+                'name'     => (string) self::pick($p, ['name', 'title', 'ten', 'product_name'], 'Account'),
+                'category' => (string) self::pick($p, ['category', 'category_name', 'danh_muc', 'cat'], 'Accounts'),
+                'price'    => (float) self::pick($p, ['price', 'gia', 'cost'], 0),
+                'stock'    => (int) self::pick($p, ['amount', 'stock', 'so_luong', 'quantity', 'available', 'inventory'], 0),
+                'note'     => (string) self::pick($p, ['description', 'note', 'mo_ta', 'desc'], ''),
+                'raw'      => $p,
+            ];
+        })->filter(fn ($p) => $p['id'] !== '')->values()->all();
+
+        if (count($mapped) > 0) {
+            Cache::put('shopvia:products', $mapped, 300);
+        }
+
+        return $mapped;
     }
 
     /** One product's details. */
