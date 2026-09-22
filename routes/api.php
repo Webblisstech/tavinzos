@@ -17,3 +17,9 @@ Route::get('/user', function (Request $request) {
 | URL: https://yourdomain.com/api/wallet/webhook
 */
 Route::post('/wallet/webhook', [WalletController::class, 'webhook'])->name('wallet.webhook');
+
+/*
+| PaymentPoint webhook — separate provider, own payload + signature header.
+| URL: https://yourdomain.com/api/wallet/paymentpoint
+*/
+Route::post('/wallet/paymentpoint', [WalletController::class, 'paymentPointWebhook'])->name('wallet.paymentpoint');

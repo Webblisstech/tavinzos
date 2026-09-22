@@ -62,6 +62,19 @@ class AdminSettingsController extends Controller
         'theme.font_scale'          => ['string', 'Theme', 'Font size', 'Overall text size.', 'select:small,normal,large'],
         'theme.radius'              => ['string', 'Theme', 'Corner rounding', 'How round cards and buttons are.', 'select:tight,normal,round'],
 
+        // ── Gateways (API keys & URLs) ────────────────────────────────
+        'gateway.webbliss_base'      => ['string', 'Gateways', 'WebBlissPay base URL', 'e.g. https://webblisspay.com/api/v1', 'text'],
+        'gateway.webbliss_secret'    => ['secret', 'Gateways', 'WebBlissPay secret key', 'Used for checkout, virtual accounts and webhook signing.', 'secret'],
+        'gateway.paymentpoint_base'  => ['string', 'Gateways', 'PaymentPoint base URL', 'e.g. https://api.paymentpoint.co', 'text'],
+        'gateway.paymentpoint_token' => ['secret', 'Gateways', 'PaymentPoint token', 'Bearer token.', 'secret'],
+        'gateway.paymentpoint_key'   => ['secret', 'Gateways', 'PaymentPoint API key', 'The api-key header value.', 'secret'],
+        'gateway.paymentpoint_secret'=> ['secret', 'Gateways', 'PaymentPoint webhook secret', 'For verifying webhook signatures.', 'secret'],
+
+        // ── Numbers API ───────────────────────────────────────────────
+        'gateway.numbers_key'        => ['secret', 'Gateways', 'Numbers API key', 'Your DaisySim / numbers provider key.', 'secret'],
+        'gateway.numbers_usa_base'   => ['string', 'Gateways', 'Numbers USA base URL', 'USA pool endpoint.', 'text'],
+        'gateway.numbers_global_base'=> ['string', 'Gateways', 'Numbers global base URL', 'All-countries endpoint.', 'text'],
+
         // ── Support ───────────────────────────────────────────────────
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
         'support.email'              => ['string', 'Support', 'Support email', 'Where customers can reach you.', 'text'],
@@ -88,13 +101,20 @@ class AdminSettingsController extends Controller
         // Group the schema for the tabbed view.
         $groups = [];
         foreach (self::SCHEMA as $key => [$type, $group, $label, $hint, $input]) {
+            // Never echo a stored secret back to the browser — only whether it
+            // is set. The field renders empty with a "leave blank to keep" hint.
+            $value = $type === 'secret'
+                ? ''
+                : $this->cast($current[$key] ?? null, $type);
+
             $groups[$group][] = [
-                'key'   => $key,
-                'type'  => $type,
-                'label' => $label,
-                'hint'  => $hint,
-                'input' => $input,
-                'value' => $this->cast($current[$key] ?? null, $type),
+                'key'    => $key,
+                'type'   => $type,
+                'label'  => $label,
+                'hint'   => $hint,
+                'input'  => $input,
+                'value'  => $value,
+                'is_set' => $type === 'secret' && filled($current[$key] ?? null),
             ];
         }
 
@@ -118,17 +138,25 @@ class AdminSettingsController extends Controller
                 ? ($request->boolean($this->field($key)) ? '1' : '0')
                 : $request->input($this->field($key));
 
+            // A blank secret means "keep the current value" — don't overwrite.
+            if ($type === 'secret' && ($raw === null || trim((string) $raw) === '')) {
+                continue;
+            }
+
             // Skip untouched non-bool fields that came back null (not rendered).
             if ($type !== 'bool' && $raw === null) {
                 continue;
             }
+
+            // Secrets are stored as plain strings.
+            $storeType = $type === 'secret' ? 'string' : $type;
 
             $exists = DB::table('settings')->where('key', $key)->exists();
 
             if ($exists) {
                 DB::table('settings')->where('key', $key)->update([
                     'value'      => (string) $raw,
-                    'type'       => $type,
+                    'type'       => $storeType,
                     'group'      => $group,
                     'label'      => $label,
                     'hint'       => $hint,
@@ -138,7 +166,7 @@ class AdminSettingsController extends Controller
                 DB::table('settings')->insert([
                     'key'        => $key,
                     'value'      => (string) $raw,
-                    'type'       => $type,
+                    'type'       => $storeType,
                     'group'      => $group,
                     'label'      => $label,
                     'hint'       => $hint,

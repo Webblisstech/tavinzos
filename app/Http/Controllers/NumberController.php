@@ -720,8 +720,12 @@ class NumberController extends Controller
 
     private function client(string $gateway): PendingRequest
     {
-        return Http::baseUrl(rtrim(config("services.numbers.{$gateway}.base"), '/'))
-            ->withToken(config('services.numbers.key'))
+        $base = $gateway === 'usa'
+            ? \App\Support\Gateway::numbersUsaBase()
+            : \App\Support\Gateway::numbersGlobalBase();
+
+        return Http::baseUrl(rtrim($base, '/'))
+            ->withToken(\App\Support\Gateway::numbersKey())
             ->acceptJson()
             ->timeout(config('services.numbers.timeout'));
     }

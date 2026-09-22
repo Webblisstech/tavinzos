@@ -103,6 +103,14 @@ return [
     // on the WebBlissPay DOMAIN ROOT (not the /api/v1 checkout base). We derive
     // the scheme+host from WEBBLISSPAY_BASE, or set VIRTUAL_ACCOUNT_BASE to
     // override. The controller appends /api/virtual-account.
+    // PaymentPoint — a second virtual-account provider some customers use.
+    'paymentpoint' => [
+        'base'    => env('PAYMENTPOINT_BASE', 'https://api.paymentpoint.co'),
+        'token'   => env('PAYMENTPOINT_TOKEN'),   // Bearer
+        'api_key' => env('PAYMENTPOINT_API_KEY'),
+        'secret'  => env('PAYMENTPOINT_SECRET'),  // webhook signing secret
+    ],
+
     'virtualaccount' => [
         'base'  => env('VIRTUAL_ACCOUNT_BASE', preg_replace('#(https?://[^/]+).*#', '$1', env('WEBBLISSPAY_BASE', 'https://webblisspay.com'))),
         'token' => env('VIRTUAL_ACCOUNT_TOKEN', env('WEBBLISSPAY_SECRET')),

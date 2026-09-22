@@ -96,6 +96,10 @@
                                     <input id="{{ $name }}" name="{{ $name }}" value="{{ $cval }}" data-color-hex maxlength="7"
                                            class="h-11 w-full rounded-xl border-ink-300 font-mono text-[13.5px] uppercase dark:border-ink-700 dark:bg-ink-900">
                                 </div>
+                            @elseif ($f['input'] === 'secret')
+                                <input id="{{ $name }}" name="{{ $name }}" type="password" autocomplete="off"
+                                       placeholder="{{ ($f['is_set'] ?? false) ? __('•••••••• (set — leave blank to keep)') : __('Not set') }}"
+                                       class="mt-1.5 h-11 w-full rounded-xl border-ink-300 font-mono text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
                             @else
                                 <input id="{{ $name }}" name="{{ $name }}"
                                        type="{{ $f['input'] === 'number' ? 'number' : 'text' }}"

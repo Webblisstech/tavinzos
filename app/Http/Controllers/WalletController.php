@@ -94,9 +94,9 @@ class WalletController extends Controller
             'updated_at'    => now(),
         ]);
 
-        $response = Http::withToken((string) config('services.webblisspay.secret'))
+        $response = Http::withToken((string) \App\Support\Gateway::webblissSecret())
             ->acceptJson()
-            ->post(rtrim((string) config('services.webblisspay.base'), '/') . '/checkout/initialize', [
+            ->post(rtrim((string) \App\Support\Gateway::webblissBase(), '/') . '/checkout/initialize', [
                 'amount'       => $amount,
                 'name'         => $user->name ?: 'Customer',
                 'email'        => $user->email,
@@ -161,7 +161,7 @@ class WalletController extends Controller
     {
         $payload   = $request->getContent();
         $signature = $request->header('X-Webbliss-Signature', '');
-        $secret    = (string) config('services.webblisspay.secret');
+        $secret    = (string) \App\Support\Gateway::webblissSecret();
 
         $expected = hash_hmac('sha256', $payload, $secret);
 
@@ -282,9 +282,9 @@ class WalletController extends Controller
         }
 
         // Authoritative check — ask the gateway, never trust the redirect.
-        $response = Http::withToken((string) config('services.webblisspay.secret'))
+        $response = Http::withToken((string) \App\Support\Gateway::webblissSecret())
             ->acceptJson()
-            ->get(rtrim((string) config('services.webblisspay.base'), '/') . '/checkout/verify/' . urlencode($reference));
+            ->get(rtrim((string) \App\Support\Gateway::webblissBase(), '/') . '/checkout/verify/' . urlencode($reference));
 
         $body = $response->json();
         $tx   = $body['data'] ?? [];
@@ -424,8 +424,8 @@ class WalletController extends Controller
             DB::table('users')->where('id', $user->id)->update(['phone' => $phone, 'updated_at' => now()]);
         }
 
-        $base  = rtrim((string) config('services.virtualaccount.base'), '/');
-        $token = (string) config('services.virtualaccount.token');
+        $base  = rtrim((string) \App\Support\Gateway::webblissBase(), '/');
+        $token = (string) \App\Support\Gateway::webblissSecret();
 
         try {
             $response = Http::withToken($token)
@@ -468,6 +468,101 @@ class WalletController extends Controller
                 'bank'   => $data['bank_name'] ?? null,
             ],
         ]);
+    }
+
+    /**
+     * PaymentPoint webhook — a second virtual-account provider. Different
+     * payload and header from WebBlissPay, so it gets its own handler, but it
+     * credits wallets through the same idempotent path.
+     */
+    public function paymentPointWebhook(Request $request)
+    {
+        $payload   = $request->getContent();
+        $signature = $request->header('Paymentpoint-Signature', '');
+        $secret    = (string) \App\Support\Gateway::paymentPointSecret();
+
+        $expected = hash_hmac('sha256', $payload, $secret);
+
+        if (! $signature || ! hash_equals($expected, $signature)) {
+            Log::warning('PaymentPoint webhook: bad signature');
+            return response()->json(['error' => 'invalid signature'], 400);
+        }
+
+        $data = $request->all();
+
+        // Only act on a successful payment.
+        $ok = ($data['notification_status'] ?? null) === 'payment_successful'
+            || ($data['transaction_status'] ?? null) === 'success';
+
+        if ($ok) {
+            $this->creditPaymentPoint($data);
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    /**
+     * Credit a wallet from a PaymentPoint transfer. Matches the customer by the
+     * customer_id we set when creating their account (falling back to the
+     * receiver account number, then email), credits the SETTLEMENT amount (what
+     * we actually receive after fees), and dedupes on transaction_id.
+     */
+    private function creditPaymentPoint(array $data): void
+    {
+        $txId    = $data['transaction_id'] ?? null;
+        $custId  = $data['customer']['customer_id'] ?? null;
+        $account = $data['receiver']['account_number'] ?? null;
+        $email   = $data['customer']['email'] ?? null;
+
+        // Settlement amount is what actually lands with us; fall back to paid.
+        $credit = (float) ($data['settlement_amount'] ?? $data['amount_paid'] ?? 0);
+
+        if ($credit <= 0 || ! $txId || (! $custId && ! $account && ! $email)) {
+            Log::warning('PaymentPoint webhook: incomplete payload', ['tx' => $txId]);
+            return;
+        }
+
+        DB::transaction(function () use ($txId, $custId, $account, $email, $credit) {
+            // Prefer our own customer_id, then the VA account, then email.
+            $q = DB::table('users');
+            if ($custId && ctype_digit((string) $custId)) {
+                $q->where('id', (int) $custId);
+            } elseif ($account) {
+                $q->where('va_account_number', $account);
+            } else {
+                $q->where('email', $email);
+            }
+            $user = $q->lockForUpdate()->first();
+
+            if (! $user) {
+                Log::warning('PaymentPoint webhook: no matching user', compact('custId', 'account', 'email', 'txId'));
+                return;
+            }
+
+            // Idempotency: never credit the same transaction twice.
+            if (DB::table('wallet_transactions')->where('gateway_ref', $txId)->exists()) {
+                return;
+            }
+
+            $after = round((float) $user->wallet_balance + $credit, 2);
+            DB::table('users')->where('id', $user->id)->update(['wallet_balance' => $after]);
+
+            DB::table('wallet_transactions')->insert([
+                'user_id'       => $user->id,
+                'reference'     => 'PP' . strtoupper(\Illuminate\Support\Str::random(9)),
+                'gateway_ref'   => $txId,
+                'type'          => 'topup',
+                'status'        => 'settled',
+                'amount'        => $credit,
+                'balance_after' => $after,
+                'currency'      => (string) $this->setting('numbers.currency.code', 'NGN'),
+                'note'          => 'Bank transfer (PaymentPoint)',
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+
+            $this->creditReferralCommission($user->id, $credit);
+        });
     }
 
     // ── Shared helpers ───────────────────────────────────────────────
