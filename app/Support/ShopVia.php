@@ -15,7 +15,10 @@ use Illuminate\Support\Facades\Log;
  */
 class ShopVia
 {
-    private const BASE = 'https://shopviaclone22.com/api';
+    private static function base(): string
+    {
+        return rtrim(Gateway::shopviaBase(), '/');
+    }
 
     private static function key(): string
     {
@@ -27,7 +30,7 @@ class ShopVia
     {
         try {
             $res = Http::acceptJson()->timeout(20)
-                ->get(self::BASE . '/' . ltrim($path, '/'), array_merge(['api_key' => self::key()], $query));
+                ->get(self::base() . '/' . ltrim($path, '/'), array_merge(['api_key' => self::key()], $query));
             return $res->successful() ? (array) $res->json() : null;
         } catch (\Throwable $e) {
             Log::warning('ShopVia GET failed', ['path' => $path, 'err' => $e->getMessage()]);
@@ -105,7 +108,7 @@ class ShopVia
     {
         try {
             $res = Http::asForm()->acceptJson()->timeout(30)
-                ->post(self::BASE . '/buy_product', array_filter([
+                ->post(self::base() . '/buy_product', array_filter([
                     'action'  => 'buyProduct',
                     'id'      => $id,
                     'amount'  => $amount,
