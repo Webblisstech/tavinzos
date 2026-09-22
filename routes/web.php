@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\Auth\LoginController as AdminLoginController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\ExternalProductController;
 use App\Http\Controllers\Admin\NumberOverrideController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminAccountController;
@@ -165,6 +166,11 @@ Route::middleware('admin')->prefix('admin/numbers')->name('admin.numbers.')->gro
     Route::post('/toggle-tier', [NumberOverrideController::class, 'toggleTier'])->name('toggle-tier');
     Route::post('/{id}/toggle', [NumberOverrideController::class, 'toggle'])->name('toggle');
     Route::post('/{id}/destroy', [NumberOverrideController::class, 'destroy'])->name('destroy');
+});
+
+Route::middleware('admin')->prefix('admin/external')->name('admin.external.')->group(function () {
+    Route::get('/', [ExternalProductController::class, 'index'])->name('index');
+    Route::post('/{extId}', [ExternalProductController::class, 'save'])->name('save');
 });
 
 Route::middleware('admin')->prefix('admin/settings')->name('admin.settings.')->group(function () {

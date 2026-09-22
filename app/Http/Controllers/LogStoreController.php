@@ -104,28 +104,40 @@ class LogStoreController extends Controller
             return [];
         }
 
+        // Per-product admin overrides: exact price and/or hidden.
+        $overrides = DB::table('external_overrides')->get()->keyBy('ext_id');
+
         return collect(\App\Support\ShopVia::products())
             ->filter(fn ($p) => $p['stock'] > 0)
-            ->map(fn ($p) => [
-                'slug'         => 'x-' . $p['id'],          // synthetic slug
-                'source'       => 'ext',                     // marks the buy route
-                'ext_id'       => $p['id'],
-                'name'         => $p['name'],
-                'category'     => $p['category'] ?: __('Accounts'),
-                'category_id'  => 0,
-                'icon'         => \App\Support\PlatformIcon::forText($p['name'], $p['category']),
+            ->reject(fn ($p) => (bool) ($overrides[$p['id']]->hidden ?? false))   // admin-hidden
+            ->map(function ($p) use ($overrides) {
+                $o = $overrides[$p['id']] ?? null;
+                // Exact override price wins; else the auto FX+markup price.
+                $price = ($o && $o->price !== null)
+                    ? $this->money((float) $o->price)
+                    : $this->externalRetail($p['price']);
+
+                return [
+                    'slug'         => 'x-' . $p['id'],
+                    'source'       => 'ext',
+                    'ext_id'       => $p['id'],
+                    'name'         => $p['name'],
+                    'category'     => $p['category'] ?: __('Accounts'),
+                    'category_id'  => 0,
+                    'icon'         => \App\Support\PlatformIcon::forText($p['name'], $p['category']),
                 'image'        => null,
                 'country'      => null,
                 'flag'         => null,
                 'description'  => $p['note'] ?? null,
                 'instructions' => null,
-                'price'        => $this->externalRetail($p['price']),
+                'price'        => $price,
                 'max'          => min(100, $p['stock']),
                 'stock'        => $p['stock'],
                 'pre_order'    => false,
                 'previewable'  => false,
                 'has_previews' => false,
-            ])
+            ];
+            })
             ->values()->all();
     }
 
@@ -162,7 +174,11 @@ class LogStoreController extends Controller
             return $this->fail('Not enough stock. Only ' . $product['stock'] . ' left.', 422);
         }
 
-        $unit  = $this->externalRetail($product['price'])['amount'];
+        // Match the displayed price: admin override wins, else auto.
+        $ov = DB::table('external_overrides')->where('ext_id', $extId)->first();
+        $unit = ($ov && $ov->price !== null)
+            ? round((float) $ov->price, 2)
+            : $this->externalRetail($product['price'])['amount'];
         $total = round($unit * $amount, 2);
         $user  = $request->user();
 

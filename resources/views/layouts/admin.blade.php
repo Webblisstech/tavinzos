@@ -30,6 +30,7 @@
         __('Operations') => [
             ['label' => __('Dashboard'),  'route' => 'admin.dashboard',   'icon' => 'grid'],
             ['label' => __('Accounts'),   'route' => 'admin.logs.index',  'icon' => 'layers'],
+            ['label' => __('External catalog'), 'route' => 'admin.external.index', 'icon' => 'layers'],
             ['label' => __('Categories'), 'route' => 'admin.categories.index', 'icon' => 'tag'],
             ['label' => __('Orders'),     'route' => 'admin.orders.index', 'icon' => 'list'],
             ['label' => __('Numbers catalog'), 'route' => 'admin.numbers.index', 'icon' => 'hash'],
