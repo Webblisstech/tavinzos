@@ -184,7 +184,7 @@
     </div>
 
     {{-- ═══════════════ Orders + how-to ═══════════════ --}}
-    <div class="space-y-4 lg:col-span-2 lg:sticky lg:top-[88px] lg:self-start">
+    <div class="space-y-4 lg:col-span-2 lg:self-start">
 
         <section class="card flex max-h-[62vh] flex-col p-5">
             <div class="flex shrink-0 items-center justify-between gap-3">
@@ -870,16 +870,24 @@
             n.cancel.textContent = 'Code received';
             n.note.textContent = '';
         } else if (d.status === 'Cancelled') {
-            n.cancel.disabled = !d.refund_claimable;
-            n.cancel.textContent = d.refunded ? 'Refunded' : (d.refund_claimable ? 'Claim refund' : 'Cancelled');
-            n.note.textContent = d.refund_claimable ? 'This number expired — claim your refund.' : '';
+            // The provider voided this number. Never show a plain "Cancel" —
+            // there's nothing left to cancel. Offer to claim the refund (the
+            // backend refunds an upstream-cancelled order locally), or show
+            // that it's already been refunded / dismissed.
+            if (d.refunded) {
+                n.cancel.disabled = true;
+                n.cancel.textContent = 'Refunded';
+                n.note.textContent = 'This number was cancelled and your refund was credited.';
+            } else {
+                n.cancel.disabled = false;
+                n.cancel.textContent = 'Claim refund';
+                n.note.textContent = 'This number was cancelled by the network — claim your refund.';
+            }
         } else {
             const left = cfg.cancelLock - Math.floor(Date.now() / 1000 - d.bought_at);
             n.cancel.disabled = left > 0;
             n.cancel.textContent = left > 0 ? 'Cancel in ' + left + 's' : 'Cancel and refund';
 
-            // The number is rented, not the code. Nothing arrives until the
-            // customer asks the app to send it — say so, or they just wait.
             n.note.textContent = left > 0
                 ? 'Enter this number in ' + (d.service || 'the app') + ' and request the code.'
                 : 'No code yet? Cancel for a full refund.';

@@ -599,9 +599,10 @@ class NumberController extends Controller
             'status' => $status,
             'code'   => $data['code'] ?? null,
             'number' => $data['phone_number'] ?? $order->phone_number,
+            // Whether WE have already refunded this order locally.
+            'refunded' => $order->refunded_at !== null,
             // A poll never moves money: false means the refund is still claimable.
-            'refund_claimable' => $status === 'Cancelled'
-                && ($data['refunded'] ?? null) === false,
+            'refund_claimable' => $status === 'Cancelled' && $order->refunded_at === null,
         ]);
     }
 
