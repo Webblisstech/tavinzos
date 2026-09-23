@@ -183,6 +183,42 @@
         </section>
     </div>
 
+    {{-- ═══════════ Purchase confirmation ═══════════ --}}
+    <div id="confirm-buy" data-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-5">
+        <div class="absolute inset-0 bg-ink-950/55 backdrop-blur-sm" data-confirm-close></div>
+        <div class="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-ink-900">
+            <div class="p-6">
+                <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
+                </div>
+                <h3 class="text-[17px] font-bold tracking-[-0.02em]">{{ __('Confirm purchase') }}</h3>
+                <p class="mt-1 text-[12.5px] text-ink-500 dark:text-ink-400">{{ __('Review before we charge your wallet.') }}</p>
+
+                <div class="mt-4 space-y-2.5 rounded-2xl border border-ink-100 p-4 dark:border-ink-800">
+                    <div class="flex items-center justify-between text-[13px]">
+                        <span class="text-ink-500 dark:text-ink-400">{{ __('Service') }}</span>
+                        <span id="cb-service" class="font-semibold"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[13px]">
+                        <span class="text-ink-500 dark:text-ink-400">{{ __('Pool') }}</span>
+                        <span id="cb-pool" class="font-semibold"></span>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-ink-100 pt-2.5 text-[14px] dark:border-ink-800">
+                        <span class="font-semibold">{{ __('Total') }}</span>
+                        <span id="cb-price" class="font-mono text-[16px] font-bold text-brand-600 dark:text-brand-400"></span>
+                    </div>
+                </div>
+
+                <p class="mt-3 text-[11.5px] leading-relaxed text-ink-400">{{ __('The number is rented — enter it in the app and request your code. No code? Cancel for a full refund.') }}</p>
+
+                <div class="mt-5 flex gap-2.5">
+                    <button type="button" data-confirm-close class="btn-ghost h-11 flex-1 text-[13.5px]">{{ __('Cancel') }}</button>
+                    <button type="button" id="cb-confirm" class="btn-primary h-11 flex-1 text-[13.5px]">{{ __('Confirm & buy') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ═══════════════ Orders + how-to ═══════════════ --}}
     <div class="space-y-4 lg:col-span-2 lg:self-start">
 
@@ -608,7 +644,9 @@
             tiers.append(label);
 
             input.addEventListener('change', () => {
-                pick = opt.quote ? { quote: opt.quote } : { code: opt.code };
+                pick = opt.quote
+                    ? { quote: opt.quote, price: opt.price.formatted, service: serviceName }
+                    : { code: opt.code, price: opt.price.formatted, service: serviceName };
                 buyBtn.disabled = false;
                 buyBtn.textContent = 'Buy for ' + opt.price.formatted;
                 clearBuyError();
@@ -998,8 +1036,29 @@
         show($('buy-error'), true);
     }
 
-    buyBtn.addEventListener('click', async () => {
+    // Buy now shows a confirmation preview first; the actual purchase runs
+    // from the confirm button inside the modal.
+    const confirmModal = $('confirm-buy');
+    function openConfirm() {
         if (!pick) return buyError('Pick a price first.');
+        $('cb-service').textContent = pick.service || serviceName || '{{ __('Number') }}';
+        $('cb-pool').textContent = pick.quote ? '{{ __('Global') }}' : '{{ __('USA') }}';
+        $('cb-price').textContent = pick.price || '';
+        confirmModal.removeAttribute('data-cloak');
+        confirmModal.classList.add('flex');
+    }
+    function closeConfirm() {
+        confirmModal.setAttribute('data-cloak', '');
+        confirmModal.classList.remove('flex');
+    }
+    confirmModal.querySelectorAll('[data-confirm-close]').forEach(b => b.addEventListener('click', closeConfirm));
+    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal || e.target.classList.contains('backdrop-blur-sm')) closeConfirm(); });
+
+    buyBtn.addEventListener('click', () => openConfirm());
+
+    $('cb-confirm').addEventListener('click', async () => {
+        if (!pick) return;
+        closeConfirm();
 
         buyBtn.disabled = true;
         buyBtn.classList.add('is-busy');
