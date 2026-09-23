@@ -74,10 +74,11 @@ class AdminSettingsController extends Controller
         'gateway.numbers_key'        => ['secret', 'Gateways', 'Numbers API key', 'Your DaisySim / numbers provider key.', 'secret'],
         'gateway.numbers_usa_base'   => ['string', 'Gateways', 'Numbers USA base URL', 'USA pool endpoint.', 'text'],
         'gateway.numbers_global_base'=> ['string', 'Gateways', 'Numbers global base URL', 'All-countries endpoint.', 'text'],
-        'gateway.shopvia_key'        => ['secret', 'Gateways', 'ShopVia (accounts) API key', 'Reseller account-store key.', 'secret'],
-        'shopvia.rate'               => ['float',  'Gateways', 'ShopVia price rate', 'Multiply their price by this to get local currency.', 'number'],
-        'shopvia.markup_mode'        => ['string', 'Gateways', 'ShopVia markup mode', 'percent or flat.', 'select:percent,flat'],
-        'shopvia.markup_value'       => ['float',  'Gateways', 'ShopVia markup value', 'Percent (e.g. 35) or flat amount.', 'number'],
+        'gateway.shopvia_key'        => ['secret', 'Gateways', 'Accounts API key', 'External account-store provider key.', 'secret'],
+        'gateway.shopvia_base'       => ['string', 'Gateways', 'Accounts API base URL', 'Provider API base.', 'text'],
+        'shopvia.rate'               => ['float',  'Gateways', 'Accounts price rate', 'Multiply the provider price by this to get local currency.', 'number'],
+        'shopvia.markup_mode'        => ['string', 'Gateways', 'Accounts markup mode', 'percent or flat.', 'select:percent,flat'],
+        'shopvia.markup_value'       => ['float',  'Gateways', 'Accounts markup value', 'Percent (e.g. 35) or flat amount.', 'number'],
 
         // ── Support ───────────────────────────────────────────────────
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
@@ -118,7 +119,9 @@ class AdminSettingsController extends Controller
                 'hint'   => $hint,
                 'input'  => $input,
                 'value'  => $value,
-                'is_set' => $type === 'secret' && filled($current[$key] ?? null),
+                'is_set' => $type === 'secret' && (
+                    filled($current[$key] ?? null) || $this->gatewayHasValue($key)
+                ),
             ];
         }
 
@@ -203,9 +206,42 @@ class AdminSettingsController extends Controller
             abort(404);
         }
 
+        // Prefer the DB value; for gateway keys fall back to the effective
+        // value the app actually uses (which may come from .env), so an admin
+        // can verify what's live even when it isn't stored in settings.
         $value = DB::table('settings')->where('key', $key)->value('value');
 
-        return response()->json(['value' => (string) $value]);
+        if (($value === null || $value === '')) {
+            $value = match ($key) {
+                'gateway.webbliss_secret'     => \App\Support\Gateway::webblissSecret(),
+                'gateway.paymentpoint_token'  => \App\Support\Gateway::paymentPointToken(),
+                'gateway.paymentpoint_key'    => \App\Support\Gateway::paymentPointKey(),
+                'gateway.paymentpoint_secret' => \App\Support\Gateway::paymentPointSecret(),
+                'gateway.numbers_key'         => \App\Support\Gateway::numbersKey(),
+                'gateway.shopvia_key'         => \App\Support\Gateway::shopviaKey(),
+                default                       => '',
+            };
+        }
+
+        return response()->json([
+            'value'  => (string) $value,
+            'source' => DB::table('settings')->where('key', $key)->value('value') ? 'settings' : (($value ?? '') !== '' ? 'env' : 'unset'),
+        ]);
+    }
+
+    /** Does a gateway secret have an effective value (DB or .env)? */
+    private function gatewayHasValue(string $key): bool
+    {
+        $v = match ($key) {
+            'gateway.webbliss_secret'     => \App\Support\Gateway::webblissSecret(),
+            'gateway.paymentpoint_token'  => \App\Support\Gateway::paymentPointToken(),
+            'gateway.paymentpoint_key'    => \App\Support\Gateway::paymentPointKey(),
+            'gateway.paymentpoint_secret' => \App\Support\Gateway::paymentPointSecret(),
+            'gateway.numbers_key'         => \App\Support\Gateway::numbersKey(),
+            'gateway.shopvia_key'         => \App\Support\Gateway::shopviaKey(),
+            default                       => '',
+        };
+        return trim((string) $v) !== '';
     }
 
     private function field(string $key): string
