@@ -13,62 +13,35 @@
 
 @section('content')
 
-{{-- ═══════════ Balance hero + delivery donut ═══════════ --}}
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-    {{-- Balance --}}
-    <section class="card relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-600 to-brand-700 p-5 text-white sm:p-6 lg:col-span-2">
-        <div class="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10"></div>
-        <div class="pointer-events-none absolute bottom-0 right-16 h-32 w-32 rounded-full bg-white/5"></div>
-        <div class="relative flex h-full flex-col justify-between gap-4">
-            <div>
-                <p class="text-[10.5px] font-bold uppercase tracking-[0.12em] text-white/60 sm:text-[11px]">{{ __('Wallet balance') }}</p>
-                <p data-wallet-balance class="mt-1 font-mono text-[30px] font-bold leading-none tracking-[-0.03em] sm:text-[40px] lg:text-[46px]">{{ $balance['formatted'] }}</p>
-                <p class="mt-2 text-[12px] text-white/70">{{ __('Spendable across numbers and accounts.') }}</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('wallet.index') }}" class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-[12.5px] font-bold text-brand-700 transition hover:bg-white/90 sm:h-11">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                    {{ __('Add funds') }}
-                </a>
-                <a href="{{ route('numbers.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Buy a number') }}</a>
-                <a href="{{ route('logs.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Accounts') }}</a>
-            </div>
+{{-- ═══════════ Balance hero ═══════════ --}}
+<section class="card relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-600 to-brand-700 p-5 text-white sm:p-6">
+    <div class="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10"></div>
+    <div class="pointer-events-none absolute bottom-0 right-16 h-32 w-32 rounded-full bg-white/5"></div>
+    <div class="relative flex h-full flex-col justify-between gap-4">
+        <div>
+            <p class="text-[10.5px] font-bold uppercase tracking-[0.12em] text-white/60 sm:text-[11px]">{{ __('Wallet balance') }}</p>
+            <p data-wallet-balance class="mt-1 font-mono text-[30px] font-bold leading-none tracking-[-0.03em] sm:text-[40px] lg:text-[46px]">{{ $balance['formatted'] }}</p>
+            <p class="mt-2 text-[12px] text-white/70">{{ __('Spendable across numbers and accounts.') }}</p>
         </div>
-    </section>
-
-    {{-- Delivery rate donut --}}
-    <section class="card flex flex-col items-center justify-center p-6">
-        <p class="text-[11.5px] font-semibold text-ink-500 dark:text-ink-400">{{ __('Delivery rate') }}</p>
-        @php
-            $pct = $rate !== null ? max(0, min(100, (float) $rate)) : 0;
-            $circ = 2 * pi() * 42;                       // r = 42
-            $dash = $circ * $pct / 100;
-        @endphp
-        <div class="relative mt-3 h-32 w-32">
-            <svg class="h-32 w-32 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10" class="text-ink-100 dark:text-ink-800"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"
-                        class="text-brand-500 transition-all duration-700"
-                        stroke-dasharray="{{ $dash }} {{ $circ }}"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="font-mono text-[24px] font-bold leading-none tracking-[-0.02em]">{{ $rate !== null ? round($rate) . '%' : '—' }}</span>
-                <span class="mt-0.5 text-[10px] font-medium text-ink-400">{{ __('7 days') }}</span>
-            </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('wallet.index') }}" class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-[12.5px] font-bold text-brand-700 transition hover:bg-white/90 sm:h-11">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                {{ __('Add funds') }}
+            </a>
+            <a href="{{ route('numbers.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Buy a number') }}</a>
+            <a href="{{ route('logs.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Accounts') }}</a>
         </div>
-        <p class="mt-3 text-center text-[11px] text-ink-400">{{ __('Codes delivered vs cancelled.') }}</p>
-    </section>
-</div>
+    </div>
+</section>
 
 {{-- ═══════════ Stat tiles ═══════════ --}}
 <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
     @php
         $tiles = [
-            ['label' => __('Total spent'),  'value' => $spend['formatted'],   'sub' => $orders . ' ' . trans_choice('order|orders', $orders), 'icon' => 'cart',   'tone' => 'brand'],
-            ['label' => __('Avg. order'),   'value' => $average['formatted'], 'sub' => __('per purchase'), 'icon' => 'chart',  'tone' => 'sky'],
-            ['label' => __('Accounts'),     'value' => number_format($accounts), 'sub' => __('bought'),    'icon' => 'layers', 'tone' => 'violet'],
-            ['label' => __('Live numbers'), 'value' => $active . ' / ' . $ceiling, 'sub' => __('active now'), 'icon' => 'hash', 'tone' => 'emerald'],
+            ['label' => __('Total spent'),     'value' => $spend['formatted'],     'sub' => $orders . ' ' . trans_choice('order|orders', $orders), 'icon' => 'cart',   'tone' => 'brand'],
+            ['label' => __('Avg. order'),      'value' => $average['formatted'],   'sub' => __('per purchase'), 'icon' => 'chart',  'tone' => 'sky'],
+            ['label' => __('Accounts'),        'value' => number_format($accounts), 'sub' => __('bought'),      'icon' => 'layers', 'tone' => 'violet'],
+            ['label' => __('Total deposited'), 'value' => $deposited['formatted'], 'sub' => __('funds added'),  'icon' => 'wallet', 'tone' => 'emerald'],
         ];
         $tones = [
             'brand'=>'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400',
@@ -84,6 +57,7 @@
                     @case('cart')   <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg> @break
                     @case('chart')  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> @break
                     @case('layers') <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg> @break
+                    @case('wallet') <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/><circle cx="17" cy="14" r="1.1" fill="currentColor"/></svg> @break
                     @default        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
                 @endswitch
             </span>
@@ -94,7 +68,7 @@
     @endforeach
 </div>
 
-{{-- ═══════════ Live numbers ═══════════ --}}
+{{-- ═══════════ Waiting for a code ═══════════ --}}
 @if ($live->isNotEmpty())
     <section class="card mt-4 p-5 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
