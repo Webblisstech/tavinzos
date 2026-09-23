@@ -14,7 +14,20 @@ class Gateway
 {
     public static function webblissBase(): string
     {
-        return self::val('gateway.webbliss_base', (string) config('services.webblisspay.base'));
+        $base = self::val('gateway.webbliss_base', (string) config('services.webblisspay.base'));
+        $base = trim($base);
+
+        // Guard against a malformed admin override (missing scheme, or blank):
+        // fall back to the .env/config value, and ensure a scheme is present.
+        if ($base === '' || ! preg_match('#^https?://#i', $base)) {
+            $fallback = (string) config('services.webblisspay.base');
+            // If the admin value was a bare host, prepend https://; else use env.
+            $base = $base !== '' && preg_match('#^[a-z0-9.-]+\.[a-z]{2,}#i', $base)
+                ? 'https://' . ltrim($base, '/')
+                : $fallback;
+        }
+
+        return rtrim($base, '/');
     }
     public static function webblissSecret(): string
     {
