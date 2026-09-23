@@ -55,22 +55,23 @@ class TransactionController extends Controller
             )
             ->sum('amount');
 
-        // Money OUT = what the customer actually spent and kept: purchases,
-        // minus anything refunded/reversed back. A number that was cancelled and
-        // refunded nets to zero, so it doesn't inflate "out".
-        $purchases = (float) DB::table('wallet_transactions')
+        // Money OUT = only what was actually delivered: numbers that received a
+        // code (verifications.status = 'completed') plus delivered account
+        // purchases (log_orders.status = 'delivered'). A number that never got a
+        // code — even if not formally refunded — is NOT counted.
+        $numberSpend = (float) DB::table('verifications')
             ->where('user_id', $userId)
-            ->where('type', 'purchase')
-            ->sum('amount');   // negative
+            ->where('status', 'completed')
+            ->sum('price');
 
-        $refunds = (float) DB::table('wallet_transactions')
-            ->where('user_id', $userId)
-            ->whereIn('type', ['refund', 'reversal'])
-            ->sum('amount');   // positive
+        $accountSpend = DB::getSchemaBuilder()->hasTable('log_orders')
+            ? (float) DB::table('log_orders')
+                ->where('user_id', $userId)
+                ->where('status', 'delivered')
+                ->sum('total')
+            : 0.0;
 
-        // purchases is negative, refunds positive → net spend is the leftover.
-        $outTotal = abs($purchases) - $refunds;
-        $outTotal = max(0, $outTotal);
+        $outTotal = $numberSpend + $accountSpend;
 
         return view('transactions.index', [
             'tx'       => $tx,
