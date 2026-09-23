@@ -104,6 +104,31 @@ class ShopVia
         return $raw ?: null;
     }
 
+    /**
+     * Recover the delivered accounts for a past order by its trans_id — for
+     * orders bought before we saved credentials locally. Returns the
+     * "login|pass" lines, or [] if the provider no longer has them.
+     */
+    public static function recoverAccounts(string $transId): array
+    {
+        $raw = self::get('order.php', ['order' => $transId]);
+        if (! $raw) {
+            return [];
+        }
+
+        // The accounts may sit under data, accounts, items, or product_data.
+        $lines = $raw['data'] ?? $raw['accounts'] ?? $raw['items']
+            ?? $raw['product_data'] ?? ($raw['order']['data'] ?? null);
+
+        if (is_string($lines)) {
+            $lines = preg_split('/\r?\n/', trim($lines));
+        }
+
+        return is_array($lines)
+            ? array_values(array_filter(array_map('strval', $lines), fn ($l) => trim($l) !== ''))
+            : [];
+    }
+
     /** Provider account balance. */
     public static function profile(): ?array
     {

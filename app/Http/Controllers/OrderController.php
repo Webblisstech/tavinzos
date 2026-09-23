@@ -128,8 +128,27 @@ class OrderController extends Controller
         // credentials live in the order meta. Present them in the same shape.
         if ($items->isEmpty() && $order->meta) {
             $meta = json_decode($order->meta, true) ?: [];
-            if (! empty($meta['accounts']) && is_array($meta['accounts'])) {
-                $items = collect($meta['accounts'])->map(fn ($line, $i) => (object) [
+
+            // Accounts saved at purchase time.
+            $accounts = (! empty($meta['accounts']) && is_array($meta['accounts']))
+                ? $meta['accounts']
+                : [];
+
+            // Older orders (bought before we saved accounts) have only the
+            // provider trans_id — recover the credentials from the provider once
+            // and backfill, so they show and never need fetching again.
+            if (empty($accounts) && ($meta['s'] ?? null) === 'x' && ! empty($meta['t'])) {
+                $recovered = \App\Support\ShopVia::recoverAccounts((string) $meta['t']);
+                if (! empty($recovered)) {
+                    $accounts = $recovered;
+                    $meta['accounts'] = $recovered;
+                    DB::table('log_orders')->where('id', $order->id)
+                        ->update(['meta' => json_encode($meta), 'updated_at' => now()]);
+                }
+            }
+
+            if (! empty($accounts)) {
+                $items = collect($accounts)->map(fn ($line, $i) => (object) [
                     'content'     => (string) $line,
                     'label'       => 'Account ' . ($i + 1),
                     'preview_url' => null,
