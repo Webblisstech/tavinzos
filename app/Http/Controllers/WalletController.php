@@ -477,20 +477,41 @@ class WalletController extends Controller
      */
     public function paymentPointWebhook(Request $request)
     {
-        $payload   = $request->getContent();
-        $signature = $request->header('Paymentpoint-Signature', '');
-        $secret    = (string) \App\Support\Gateway::paymentPointSecret();
+        $payload = $request->getContent();
+        $secret  = (string) \App\Support\Gateway::paymentPointSecret();
+
+        // PaymentPoint's header casing/name can vary; check the common forms.
+        $signature = $request->header('Paymentpoint-Signature')
+            ?? $request->header('paymentpoint-signature')
+            ?? $request->header('X-Paymentpoint-Signature')
+            ?? $request->header('http_paymentpoint_signature')
+            ?? '';
 
         $expected = hash_hmac('sha256', $payload, $secret);
 
-        if (! $signature || ! hash_equals($expected, $signature)) {
-            Log::warning('PaymentPoint webhook: bad signature');
+        // Also compute the base64 variant, in case they encode that way.
+        $expectedB64 = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+
+        $match = $signature && (
+            hash_equals($expected, $signature) ||
+            hash_equals($expectedB64, $signature)
+        );
+
+        if (! $match) {
+            // Log enough to diagnose WITHOUT leaking the secret.
+            Log::warning('PaymentPoint webhook: bad signature', [
+                'secret_set'      => $secret !== '',
+                'secret_len'      => strlen($secret),
+                'sig_received'    => $signature ?: '(none)',
+                'sig_expected_hex'=> $expected,
+                'all_headers'     => array_keys($request->headers->all()),
+                'body_sample'     => mb_substr($payload, 0, 200),
+            ]);
             return response()->json(['error' => 'invalid signature'], 400);
         }
 
         $data = $request->all();
 
-        // Only act on a successful payment.
         $ok = ($data['notification_status'] ?? null) === 'payment_successful'
             || ($data['transaction_status'] ?? null) === 'success';
 
