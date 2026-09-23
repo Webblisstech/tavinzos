@@ -94,17 +94,35 @@ class WalletController extends Controller
             'updated_at'    => now(),
         ]);
 
-        $response = Http::withToken((string) \App\Support\Gateway::webblissSecret())
-            ->acceptJson()
-            ->post(rtrim((string) \App\Support\Gateway::webblissBase(), '/') . '/checkout/initialize', [
-                'amount'       => $amount,
-                'name'         => $user->name ?: 'Customer',
-                'email'        => $user->email,
-                'reference'    => $reference,
-                'callback_url' => route('wallet.callback'),
-                'description'  => 'Wallet top-up',
-                'metadata'     => ['user_id' => $user->id],
-            ]);
+        $payload = [
+            'amount'       => $amount,
+            'name'         => $user->name ?: 'Customer',
+            'email'        => $user->email,
+            'reference'    => $reference,
+            'callback_url' => route('wallet.callback'),
+            'description'  => 'Wallet top-up',
+            'metadata'     => ['user_id' => $user->id],
+        ];
+
+        $secret = (string) \App\Support\Gateway::webblissSecret();
+        $base   = rtrim((string) \App\Support\Gateway::webblissBase(), '/');
+        $root   = preg_replace('#/api/v\d+/?$#', '', $base);   // domain root
+
+        // Try the configured base first; if that path 404s (provider moved the
+        // endpoint), retry once on the domain root before giving up.
+        $urls = array_values(array_unique([
+            $base . '/checkout/initialize',
+            $root . '/api/v1/checkout/initialize',
+            $root . '/checkout/initialize',
+        ]));
+
+        $response = null;
+        foreach ($urls as $url) {
+            $response = Http::withToken($secret)->acceptJson()->post($url, $payload);
+            if ($response->status() !== 404) {
+                break;   // 404 means wrong path; anything else, stop and use it
+            }
+        }
 
         $body = $response->json();
 
