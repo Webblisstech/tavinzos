@@ -1041,8 +1041,8 @@
     const confirmModal = $('confirm-buy');
     function openConfirm() {
         if (!pick) return buyError('Pick a price first.');
-        $('cb-service').textContent = pick.service || serviceName || '{{ __('Number') }}';
-        $('cb-pool').textContent = pick.quote ? '{{ __('Global') }}' : '{{ __('USA') }}';
+        $('cb-service').textContent = pick.service || serviceName || 'Number';
+        $('cb-pool').textContent = pick.quote ? 'Global' : 'USA';
         $('cb-price').textContent = pick.price || '';
         confirmModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
