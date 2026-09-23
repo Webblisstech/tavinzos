@@ -124,6 +124,19 @@ class OrderController extends Controller
             ->orderBy('id')
             ->get(['content', 'label', 'preview_url']);
 
+        // External (pass-through) orders have no log_items — their delivered
+        // credentials live in the order meta. Present them in the same shape.
+        if ($items->isEmpty() && $order->meta) {
+            $meta = json_decode($order->meta, true) ?: [];
+            if (! empty($meta['accounts']) && is_array($meta['accounts'])) {
+                $items = collect($meta['accounts'])->map(fn ($line, $i) => (object) [
+                    'content'     => (string) $line,
+                    'label'       => 'Account ' . ($i + 1),
+                    'preview_url' => null,
+                ])->values();
+            }
+        }
+
         return view('orders.show', [
             'order' => $order,
             'items' => $items,

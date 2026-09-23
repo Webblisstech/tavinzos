@@ -253,14 +253,20 @@ class LogStoreController extends Controller
             return $this->fail(__('This purchase could not be completed and you have not been charged. Please try again.'), 422);
         }
 
-        // Delivered — save the order with the accounts.
+        // Delivered — save the order with the accounts. External accounts have
+        // no local product row, so we store the delivered credentials in the
+        // order's meta; the order-detail page reads them from there.
         $ref = 'AC' . strtoupper(\Illuminate\Support\Str::random(10));
         DB::table('log_orders')->insert([
             'reference' => $ref, 'user_id' => $user->id, 'product_name' => $product['name'],
             'quantity' => $amount, 'unit_price' => $unit, 'total' => $total,
             'currency' => (string) $this->setting('numbers.currency.code', 'NGN'),
             'status' => 'delivered',
-            'meta' => json_encode(['s' => 'x', 't' => $result['trans_id']]),  // opaque
+            'meta' => json_encode([
+                's' => 'x',
+                't' => $result['trans_id'],
+                'accounts' => array_values($result['accounts']),   // delivered credentials
+            ]),
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
