@@ -47,9 +47,9 @@
         <div class="relative flex h-full flex-col justify-between p-12 text-white">
             <div class="flex items-center gap-2.5">
                 <span class="grid h-10 w-10 place-items-center rounded-xl bg-white/15">
-                    <span class="font-sans text-[18px] font-bold leading-none tracking-[-0.04em] text-white">IB</span>
+                    <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 16.5v-2M9 16.5v-5M13 16.5v-8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M5 12.5c3-4 6-5.5 9.5-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/><circle cx="18" cy="6.5" r="3.4" fill="currentColor"/><path d="m16.7 6.5 1 1 1.6-1.9" stroke="#D91F2C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
-                <span class="text-[19px] font-bold tracking-[-0.03em]">IBSolutions</span>
+                <span class="text-[19px] font-bold tracking-[-0.03em]">{{ config('app.name', 'Tavinzos') }}</span>
             </div>
 
             <div>
@@ -71,9 +71,9 @@
 
             <div class="mb-8 flex items-center gap-2.5 lg:hidden">
                 <span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-600 text-white">
-                    <span class="font-sans text-[18px] font-bold leading-none tracking-[-0.04em] text-white">IB</span>
+                    <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 16.5v-2M9 16.5v-5M13 16.5v-8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M5 12.5c3-4 6-5.5 9.5-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/><circle cx="18" cy="6.5" r="3.4" fill="currentColor"/><path d="m16.7 6.5 1 1 1.6-1.9" stroke="#D91F2C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
-                <span class="text-[18px] font-bold tracking-[-0.03em]">IBSolutions</span>
+                <span class="text-[18px] font-bold tracking-[-0.03em]">{{ config('app.name', 'Tavinzos') }}</span>
             </div>
 
             <h2 class="text-[26px] font-bold tracking-[-0.03em]">{{ __('Create account') }}</h2>
