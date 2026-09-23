@@ -126,7 +126,7 @@
     </aside>
 
     {{-- ───────── Main column ───────── --}}
-    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <div class="flex min-w-0 flex-1 flex-col overflow-y-auto">
 
         <header class="flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[68px] dark:border-ink-800 dark:bg-ink-950/85">
 
@@ -178,7 +178,7 @@
             </div>
         @endif
 
-        <main class="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+        <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             <div class="anim-fade mx-auto max-w-[1400px]">
                 @if (session('status'))
                     <div class="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-600/25 bg-emerald-50 p-4 text-[13px] font-medium text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300">
