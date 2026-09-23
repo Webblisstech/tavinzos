@@ -117,7 +117,9 @@ class WalletController extends Controller
         ]));
 
         $response = null;
+        $triedUrl = null;
         foreach ($urls as $url) {
+            $triedUrl = $url;
             $response = Http::withToken($secret)->acceptJson()->post($url, $payload);
             if ($response->status() !== 404) {
                 break;   // 404 means wrong path; anything else, stop and use it
@@ -127,7 +129,13 @@ class WalletController extends Controller
         $body = $response->json();
 
         if (! $response->successful() || ! ($body['status'] ?? false) || empty($body['data']['checkout_url'])) {
-            Log::warning('WebBlissPay init failed', ['ref' => $reference, 'body' => $body]);
+            Log::warning('WebBlissPay init failed', [
+                'ref'        => $reference,
+                'url'        => $triedUrl,
+                'http_status'=> $response->status(),
+                'secret_set' => $secret !== '',
+                'body'       => $body ?: mb_substr((string) $response->body(), 0, 400),
+            ]);
 
             // Roll the pending row back so it doesn't linger.
             DB::table('wallet_transactions')->where('reference', $reference)->delete();
@@ -142,9 +150,21 @@ class WalletController extends Controller
     /** The customer returns here. We verify server-side, then credit. */
     public function callback(Request $request)
     {
-        $reference = $request->query('reference') ?: $request->query('merchant_reference');
+        // WebBlissPay may return the reference under any of these names.
+        $reference = $request->query('reference')
+            ?: $request->query('merchant_reference')
+            ?: $request->query('ref')
+            ?: $request->query('trxref')
+            ?: $request->query('transaction_reference')
+            ?: $request->query('tx_ref')
+            ?: $request->input('reference')
+            ?: $request->input('merchant_reference');
 
         if (! $reference) {
+            Log::warning('WebBlissPay callback: no reference', [
+                'query' => $request->query(),
+                'all'   => $request->all(),
+            ]);
             return redirect()->route('wallet.index')->withErrors(['amount' => __('Missing payment reference.')]);
         }
 
@@ -178,7 +198,10 @@ class WalletController extends Controller
     public function webhook(Request $request)
     {
         $payload   = $request->getContent();
-        $signature = $request->header('X-Webbliss-Signature', '');
+        $signature = $request->header('X-Webbliss-Signature')
+            ?? $request->header('x-webbliss-signature')
+            ?? $request->header('Webbliss-Signature')
+            ?? '';
         $secret    = (string) \App\Support\Gateway::webblissSecret();
 
         $expected = hash_hmac('sha256', $payload, $secret);
@@ -186,7 +209,11 @@ class WalletController extends Controller
         // hash_equals, not === : constant-time, no timing leak.
         if (! $signature || ! hash_equals($expected, $signature)) {
             Log::warning('WebBlissPay webhook: bad signature', [
-                'delivery' => $request->header('X-Webbliss-Delivery'),
+                'delivery'    => $request->header('X-Webbliss-Delivery'),
+                'sig_received'=> $signature ?: '(none)',
+                'secret_set'  => $secret !== '',
+                'headers'     => array_keys($request->headers->all()),
+                'body_sample' => mb_substr($payload, 0, 200),
             ]);
             return response()->json(['error' => 'invalid signature'], 401);
         }
