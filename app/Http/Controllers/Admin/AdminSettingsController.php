@@ -92,6 +92,8 @@ class AdminSettingsController extends Controller
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
         'support.email'              => ['string', 'Support', 'Support email', 'Where customers can reach you.', 'text'],
         'support.telegram'           => ['string', 'Support', 'Telegram handle/link', 'e.g. @yoursupport or a t.me link.', 'text'],
+        'support.group'              => ['string', 'Support', 'Group link', 'WhatsApp/Telegram group link shown across the app.', 'text'],
+        'support.group_label'        => ['string', 'Support', 'Group button label', 'e.g. Join our WhatsApp group.', 'text'],
         'support.hours'              => ['string', 'Support', 'Support hours', 'e.g. 24/7 or Mon–Fri, 9am–6pm.', 'text'],
         'support.message'            => ['string', 'Support', 'Support blurb', 'A short line shown on the contact page.', 'text'],
 

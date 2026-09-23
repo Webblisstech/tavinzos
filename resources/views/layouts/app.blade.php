@@ -154,13 +154,25 @@
         </nav>
 
         <div class="m-3 mt-0 rounded-2xl border border-ink-200 p-3.5 dark:border-ink-800">
+            @php
+                $sset = \Illuminate\Support\Facades\Cache::get('settings') ?: [];
+                $groupUrl = trim((string) ($sset['support.group'] ?? ''));
+                $groupLabel = trim((string) ($sset['support.group_label'] ?? '')) ?: __('Join our group');
+            @endphp
             <p class="text-[12px] leading-snug text-ink-600 dark:text-ink-300">
                 {{ __('Need help with an order?') }}
             </p>
-            <a href="{{ config('app.support_url') ?: '#' }}"
+            <a href="{{ Route::has('support.index') ? route('support.index') : '#' }}"
                class="mt-2 flex h-9 w-full items-center justify-center rounded-lg border border-ink-300 text-[12px] font-semibold transition hover:bg-ink-100 dark:border-ink-700 dark:hover:bg-ink-800">
                 {{ __('Contact support') }}
             </a>
+            @if ($groupUrl !== '')
+                <a href="{{ $groupUrl }}" target="_blank" rel="noopener"
+                   class="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 text-[12px] font-bold text-white transition hover:bg-emerald-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {{ $groupLabel }}
+                </a>
+            @endif
         </div>
 
     </aside>

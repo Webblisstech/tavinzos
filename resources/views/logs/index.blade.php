@@ -252,10 +252,22 @@
         </div>
 
         <div class="border-t border-ink-200 p-5 dark:border-ink-800">
+            @php
+                $mset = \Illuminate\Support\Facades\Cache::get('settings') ?: [];
+                $mGroupUrl = trim((string) ($mset['support.group'] ?? ''));
+                $mGroupLabel = trim((string) ($mset['support.group_label'] ?? '')) ?: __('Join our group');
+            @endphp
             <div class="flex items-center gap-2">
                 <button type="button" id="r-copy-all" class="btn-ghost h-11 flex-1 text-[13px]">{{ __('Copy all') }}</button>
                 <a id="r-orders" href="{{ Route::has('orders.index') ? route('orders.index', ['tab' => 'accounts']) : '#' }}" class="btn-primary h-11 flex-1 text-[13px]">{{ __('My orders') }}</a>
             </div>
+            @if ($mGroupUrl !== '')
+                <a href="{{ $mGroupUrl }}" target="_blank" rel="noopener"
+                   class="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-[13px] font-bold text-white transition hover:bg-emerald-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {{ $mGroupLabel }}
+                </a>
+            @endif
         </div>
     </div>
 </div>
