@@ -21,16 +21,35 @@ class DashboardController extends Controller
         $dayAgo  = now()->subDay();
 
         // ── One pass for the week's totals ───────────────────────────
-        $week = DB::table('verifications')
+        // "Spend" counts only value the customer actually received: numbers
+        // that delivered a code (status 'completed'), plus delivered account
+        // purchases. Cancelled/refunded numbers and pending orders don't count.
+        $numberSpend = DB::table('verifications')
             ->where('user_id', $userId)
             ->where('created_at', '>=', $weekAgo)
-            ->selectRaw('COUNT(*) AS orders')
-            ->selectRaw('COALESCE(SUM(price), 0) AS spend')
-            ->selectRaw('COALESCE(SUM(CASE WHEN refunded_at IS NOT NULL THEN refund_amount ELSE 0 END), 0) AS refunded')
-            ->first();
+            ->where('status', 'completed')
+            ->sum('price');
 
-        $spend  = (float) ($week->spend ?? 0) - (float) ($week->refunded ?? 0);
-        $orders = (int) ($week->orders ?? 0);
+        $numberOrders = DB::table('verifications')
+            ->where('user_id', $userId)
+            ->where('created_at', '>=', $weekAgo)
+            ->where('status', 'completed')
+            ->count();
+
+        $logSpend = DB::table('log_orders')
+            ->where('user_id', $userId)
+            ->where('created_at', '>=', $weekAgo)
+            ->where('status', 'delivered')
+            ->sum('total');
+
+        $logOrders = DB::table('log_orders')
+            ->where('user_id', $userId)
+            ->where('created_at', '>=', $weekAgo)
+            ->where('status', 'delivered')
+            ->count();
+
+        $spend  = (float) $numberSpend + (float) $logSpend;
+        $orders = (int) $numberOrders + (int) $logOrders;
 
         // ── Delivery in the last 24h ─────────────────────────────────
         $day = DB::table('verifications')
@@ -55,6 +74,7 @@ class DashboardController extends Controller
             ? (int) DB::table('log_orders')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $weekAgo)
+                ->where('status', 'delivered')
                 ->sum('quantity')
             : 0;
 
