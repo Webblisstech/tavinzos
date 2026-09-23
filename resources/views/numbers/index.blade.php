@@ -184,7 +184,7 @@
     </div>
 
     {{-- ═══════════ Purchase confirmation ═══════════ --}}
-    <div id="confirm-buy" data-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-5">
+    <div id="confirm-buy" style="display:none" class="fixed inset-0 z-[60] items-center justify-center p-5">
         <div class="absolute inset-0 bg-ink-950/55 backdrop-blur-sm" data-confirm-close></div>
         <div class="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-ink-900">
             <div class="p-6">
@@ -1044,15 +1044,14 @@
         $('cb-service').textContent = pick.service || serviceName || '{{ __('Number') }}';
         $('cb-pool').textContent = pick.quote ? '{{ __('Global') }}' : '{{ __('USA') }}';
         $('cb-price').textContent = pick.price || '';
-        confirmModal.removeAttribute('data-cloak');
-        confirmModal.classList.add('flex');
+        confirmModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
     }
     function closeConfirm() {
-        confirmModal.setAttribute('data-cloak', '');
-        confirmModal.classList.remove('flex');
+        confirmModal.style.display = 'none';
+        document.body.style.overflow = '';
     }
     confirmModal.querySelectorAll('[data-confirm-close]').forEach(b => b.addEventListener('click', closeConfirm));
-    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal || e.target.classList.contains('backdrop-blur-sm')) closeConfirm(); });
 
     buyBtn.addEventListener('click', () => openConfirm());
 
