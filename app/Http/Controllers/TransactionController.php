@@ -43,8 +43,34 @@ class TransactionController extends Controller
         ]);
 
         // Totals for the header (all-time, not just this page).
-        $inTotal  = (float) DB::table('wallet_transactions')->where('user_id', $userId)->where('amount', '>=', 0)->sum('amount');
-        $outTotal = (float) DB::table('wallet_transactions')->where('user_id', $userId)->where('amount', '<', 0)->sum('amount');
+        // Money IN = actual funding only (top-ups). Refunds from cancelled
+        // numbers are money returning, not money the customer put in, so they
+        // don't count here.
+        $inTotal = (float) DB::table('wallet_transactions')
+            ->where('user_id', $userId)
+            ->where('type', 'topup')
+            ->when(
+                DB::getSchemaBuilder()->hasColumn('wallet_transactions', 'status'),
+                fn ($q) => $q->where('status', 'settled')
+            )
+            ->sum('amount');
+
+        // Money OUT = what the customer actually spent and kept: purchases,
+        // minus anything refunded/reversed back. A number that was cancelled and
+        // refunded nets to zero, so it doesn't inflate "out".
+        $purchases = (float) DB::table('wallet_transactions')
+            ->where('user_id', $userId)
+            ->where('type', 'purchase')
+            ->sum('amount');   // negative
+
+        $refunds = (float) DB::table('wallet_transactions')
+            ->where('user_id', $userId)
+            ->whereIn('type', ['refund', 'reversal'])
+            ->sum('amount');   // positive
+
+        // purchases is negative, refunds positive → net spend is the leftover.
+        $outTotal = abs($purchases) - $refunds;
+        $outTotal = max(0, $outTotal);
 
         return view('transactions.index', [
             'tx'       => $tx,
@@ -52,7 +78,7 @@ class TransactionController extends Controller
             'filter'   => $filter,
             'balance'  => $this->money((float) $request->user()->wallet_balance),
             'in'       => $this->money($inTotal),
-            'out'      => $this->money(abs($outTotal)),
+            'out'      => $this->money($outTotal),
         ]);
     }
 
