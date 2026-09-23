@@ -1,11 +1,11 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', __('Settings'))
 
 @section('header')
     <div>
         <h2 class="text-[22px] font-bold leading-tight tracking-[-0.035em] text-ink-900 dark:text-ink-50">{{ __('Settings') }}</h2>
-        <p class="mt-1 text-[13px] text-ink-600 dark:text-ink-400">{{ __('Manage your profile, password and account.') }}</p>
+        <p class="mt-1 text-[13px] text-ink-600 dark:text-ink-400">{{ __('Pricing, currency, wallet limits and site options.') }}</p>
     </div>
 @endsection
 
@@ -18,149 +18,176 @@
     </div>
 @endif
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+<form method="POST" action="{{ route('admin.settings.update') }}">
+    @csrf
+    @method('PUT')
 
-    {{-- Account summary --}}
-    <aside class="lg:col-span-1">
-        <div class="card p-5 lg:sticky lg:top-[88px]">
-            @php
-                $initials = \Illuminate\Support\Str::of($user->name ?: 'U')->explode(' ')->take(2)
-                    ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))->implode('');
-            @endphp
-            <div class="flex items-center gap-3">
-                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-600 text-[16px] font-bold text-white">{{ $initials }}</span>
-                <div class="min-w-0">
-                    <p class="truncate text-[15px] font-bold">{{ $user->name }}</p>
-                    <p class="truncate text-[12px] text-ink-500 dark:text-ink-400">{{ $user->email }}</p>
-                </div>
-            </div>
+    {{-- Group tabs --}}
+    <div class="mb-5 flex flex-wrap gap-1.5 rounded-2xl border border-ink-200 bg-ink-50 p-1 dark:border-ink-800 dark:bg-ink-900/60">
+        @foreach (array_keys($groups) as $i => $group)
+            <button type="button" data-tab="{{ Str::slug($group) }}"
+                    class="grp-tab h-9 rounded-xl px-3.5 text-[12.5px] font-bold transition">{{ $group }}</button>
+        @endforeach
+    </div>
 
-            <dl class="mt-5 space-y-3 border-t border-ink-100 pt-4 dark:border-ink-800/60">
-                <div class="flex items-center justify-between">
-                    <dt class="text-[12px] text-ink-500 dark:text-ink-400">{{ __('Wallet balance') }}</dt>
-                    <dd class="font-mono text-[13px] font-bold text-brand-600 dark:text-brand-400">{{ config('services.numbers.currency.symbol', '₦') }}{{ number_format((float) $user->wallet_balance, 2) }}</dd>
-                </div>
-                <div class="flex items-center justify-between">
-                    <dt class="text-[12px] text-ink-500 dark:text-ink-400">{{ __('Email status') }}</dt>
-                    <dd>
-                        @if ($user->email_verified_at)
-                            <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">{{ __('Verified') }}</span>
+    @foreach ($groups as $group => $fields)
+        <section data-panel="{{ Str::slug($group) }}" class="card mb-4 p-6 @if (! $loop->first) hidden @endif">
+            <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ $group }}</h3>
+
+            @if ($group === 'Payments')
+                {{-- Gateway connection — configured in .env, shown read-only here.
+                     The secret is never displayed; only whether it's set. --}}
+                <div class="mt-4 rounded-2xl border border-ink-200 bg-ink-50/60 p-4 dark:border-ink-800 dark:bg-ink-900/40">
+                    <div class="flex items-center justify-between">
+                        <p class="text-[12.5px] font-bold">{{ __('WebBlissPay connection') }}</p>
+                        @if ($gateway['has_secret'] && $gateway['base'])
+                            <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">{{ __('Connected') }}</span>
                         @else
-                            <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">{{ __('Unverified') }}</span>
+                            <span class="rounded-md bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ __('Not configured') }}</span>
                         @endif
-                    </dd>
-                </div>
-                <div class="flex items-center justify-between">
-                    <dt class="text-[12px] text-ink-500 dark:text-ink-400">{{ __('Member since') }}</dt>
-                    <dd class="text-[13px] font-semibold">{{ \Illuminate\Support\Carbon::parse($user->created_at)->format('M Y') }}</dd>
-                </div>
-            </dl>
-        </div>
-    </aside>
-
-    {{-- Forms --}}
-    <div class="space-y-4 lg:col-span-2">
-
-        {{-- Profile (read-only — contact support to change these) --}}
-        <section class="card p-6">
-            <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ __('Profile') }}</h3>
-            <p class="mt-0.5 text-[12px] text-ink-500 dark:text-ink-400">{{ __('Your account details. Contact support to change these.') }}</p>
-
-            <dl class="mt-4 divide-y divide-ink-100 dark:divide-ink-800/60">
-                <div class="flex items-center justify-between gap-4 py-3">
-                    <dt class="text-[12.5px] text-ink-500 dark:text-ink-400">{{ __('Name') }}</dt>
-                    <dd class="truncate text-right text-[13.5px] font-semibold">{{ $user->name }}</dd>
-                </div>
-                <div class="flex items-center justify-between gap-4 py-3">
-                    <dt class="text-[12.5px] text-ink-500 dark:text-ink-400">{{ __('Email') }}</dt>
-                    <dd class="truncate text-right text-[13.5px] font-semibold">{{ $user->email }}</dd>
-                </div>
-                <div class="flex items-center justify-between gap-4 py-3">
-                    <dt class="text-[12.5px] text-ink-500 dark:text-ink-400">{{ __('Phone') }}</dt>
-                    <dd class="truncate text-right text-[13.5px] font-semibold">{{ $user->phone ?: '—' }}</dd>
-                </div>
-            </dl>
-
-            <div class="mt-4 flex items-start gap-2 rounded-xl bg-ink-50 p-3 dark:bg-ink-900">
-                <svg width="15" height="15" class="mt-0.5 h-[15px] w-[15px] shrink-0 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
-                <p class="text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{{ __('To update your name, email or phone number, please contact support.') }}</p>
-            </div>
-        </section>
-
-        {{-- Password --}}
-        <section class="card p-6">
-            <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ __('Password') }}</h3>
-            <p class="mt-0.5 text-[12px] text-ink-500 dark:text-ink-400">{{ __('Use a long, unique password.') }}</p>
-
-            <form method="POST" action="{{ route('settings.password') }}" class="mt-4 space-y-3">
-                @csrf
-                @method('PUT')
-                <div>
-                    <label for="current_password" class="text-[12px] font-semibold text-ink-700 dark:text-ink-200">{{ __('Current password') }}</label>
-                    <input id="current_password" name="current_password" type="password" autocomplete="current-password"
-                           class="mt-1 h-11 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
-                    @error('current_password')<p class="mt-1 text-[11px] font-medium text-brand-700 dark:text-brand-400">{{ $message }}</p>@enderror
-                </div>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                        <label for="password" class="text-[12px] font-semibold text-ink-700 dark:text-ink-200">{{ __('New password') }}</label>
-                        <input id="password" name="password" type="password" autocomplete="new-password"
-                               class="mt-1 h-11 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
-                        @error('password')<p class="mt-1 text-[11px] font-medium text-brand-700 dark:text-brand-400">{{ $message }}</p>@enderror
                     </div>
-                    <div>
-                        <label for="password_confirmation" class="text-[12px] font-semibold text-ink-700 dark:text-ink-200">{{ __('Confirm password') }}</label>
-                        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password"
-                               class="mt-1 h-11 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
-                    </div>
+                    <dl class="mt-3 space-y-2 text-[12px]">
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-ink-500 dark:text-ink-400">{{ __('API base') }}</dt>
+                            <dd class="truncate font-mono text-ink-700 dark:text-ink-200">{{ $gateway['base'] ?: '—' }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-ink-500 dark:text-ink-400">{{ __('Secret key') }}</dt>
+                            <dd class="font-mono text-ink-700 dark:text-ink-200">{{ $gateway['has_secret'] ? '•••• set in .env' : __('missing') }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-3">
+                            <dt class="shrink-0 text-ink-500 dark:text-ink-400">{{ __('Webhook URL') }}</dt>
+                            <dd class="break-all text-right font-mono text-[11px] text-ink-700 dark:text-ink-200">{{ $gateway['webhook'] }}</dd>
+                        </div>
+                    </dl>
+                    <p class="mt-3 text-[11px] text-ink-500 dark:text-ink-400">{{ __('Keys live in your .env for security. Set the webhook URL above in your WebBlissPay dashboard.') }}</p>
                 </div>
-                <button type="submit" class="btn-primary h-11 px-6 text-[13px]">{{ __('Change password') }}</button>
-            </form>
-        </section>
+            @endif
 
-        {{-- Appearance --}}
-        <section class="card p-6">
-            <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ __('Appearance') }}</h3>
-            <p class="mt-0.5 text-[12px] text-ink-500 dark:text-ink-400">{{ __('Choose how the app looks. Saved on this device.') }}</p>
-            <div class="mt-4 grid grid-cols-3 gap-2" id="theme-picker">
-                @foreach (['light' => __('Light'), 'dark' => __('Dark'), 'system' => __('System')] as $key => $label)
-                    <button type="button" data-theme="{{ $key }}"
-                            class="theme-opt flex h-11 items-center justify-center gap-2 rounded-xl border border-ink-200 text-[12.5px] font-semibold transition dark:border-ink-800">
-                        {{ $label }}
-                    </button>
+            <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                @foreach ($fields as $f)
+                    @php $name = str_replace('.', '__', $f['key']); @endphp
+                    <div class="@if (Str::startsWith($f['input'], 'toggle')) sm:col-span-2 @endif">
+                        @if ($f['input'] === 'toggle')
+                            <label class="flex items-start justify-between gap-4 rounded-xl border border-ink-200 p-3.5 dark:border-ink-800">
+                                <span>
+                                    <span class="block text-[13px] font-semibold">{{ $f['label'] }}</span>
+                                    <span class="mt-0.5 block text-[11.5px] text-ink-500 dark:text-ink-400">{{ $f['hint'] }}</span>
+                                </span>
+                                <span class="relative mt-0.5 inline-flex shrink-0">
+                                    <input type="checkbox" name="{{ $name }}" value="1" @checked($f['value']) class="peer sr-only">
+                                    <span class="h-6 w-11 rounded-full bg-ink-200 transition peer-checked:bg-brand-600 dark:bg-ink-700"></span>
+                                    <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                        @else
+                            <label for="{{ $name }}" class="text-[12.5px] font-semibold text-ink-700 dark:text-ink-200">{{ $f['label'] }}</label>
+                            @if (Str::startsWith($f['input'], 'select:'))
+                                <select id="{{ $name }}" name="{{ $name }}" class="mt-1.5 h-11 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
+                                    @foreach (explode(',', Str::after($f['input'], 'select:')) as $opt)
+                                        <option value="{{ $opt }}" @selected($f['value'] === $opt)>{{ ucfirst($opt) }}</option>
+                                    @endforeach
+                                </select>
+                            @elseif ($f['input'] === 'textarea')
+                                <textarea id="{{ $name }}" name="{{ $name }}" rows="3"
+                                          class="mt-1.5 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900">{{ $f['value'] }}</textarea>
+                            @elseif ($f['input'] === 'color')
+                                @php $cval = preg_match('/^#?[0-9a-fA-F]{6}$/', (string) $f['value']) ? '#'.ltrim((string)$f['value'],'#') : '#D91F2C'; @endphp
+                                <div class="mt-1.5 flex items-center gap-2" data-color-group>
+                                    <input type="color" value="{{ $cval }}" data-color-swatch
+                                           class="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-ink-300 bg-transparent p-1 dark:border-ink-700">
+                                    <input id="{{ $name }}" name="{{ $name }}" value="{{ $cval }}" data-color-hex maxlength="7"
+                                           class="h-11 w-full rounded-xl border-ink-300 font-mono text-[13.5px] uppercase dark:border-ink-700 dark:bg-ink-900">
+                                </div>
+                            @elseif ($f['input'] === 'secret')
+                                <div class="relative mt-1.5">
+                                    <input id="{{ $name }}" name="{{ $name }}" type="password" autocomplete="off"
+                                           data-secret-key="{{ $f['key'] }}" data-is-set="{{ ($f['is_set'] ?? false) ? '1' : '0' }}"
+                                           placeholder="{{ ($f['is_set'] ?? false) ? __('•••••••• (set — leave blank to keep)') : __('Not set') }}"
+                                           class="h-11 w-full rounded-xl border-ink-300 pr-11 font-mono text-[13.5px] dark:border-ink-700 dark:bg-ink-900">
+                                    @if ($f['is_set'] ?? false)
+                                        <button type="button" data-reveal="{{ $f['key'] }}" tabindex="-1"
+                                                class="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-400 transition hover:text-ink-700 dark:hover:text-ink-200" aria-label="{{ __('Show') }}">
+                                            <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                    @endif
+                                </div>
+                            @else
+                                <input id="{{ $name }}" name="{{ $name }}"
+                                       type="{{ $f['input'] === 'number' ? 'number' : 'text' }}"
+                                       @if ($f['input'] === 'number') step="any" @endif
+                                       value="{{ $f['value'] }}"
+                                       class="mt-1.5 h-11 w-full rounded-xl border-ink-300 text-[13.5px] dark:border-ink-700 dark:bg-ink-900 {{ $f['input'] === 'number' ? 'font-mono' : '' }}">
+                            @endif
+                            <p class="mt-1 text-[11px] text-ink-500 dark:text-ink-400">{{ $f['hint'] }}</p>
+                        @endif
+                    </div>
                 @endforeach
             </div>
         </section>
+    @endforeach
+
+    <div class="-mx-4 mt-4 border-t border-ink-200 bg-white/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:border-ink-800 dark:bg-ink-950/90">
+        <div class="mx-auto flex max-w-[1400px] items-center justify-between">
+            <p class="text-[12px] text-ink-500 dark:text-ink-400">{{ __('Changes take effect immediately.') }}</p>
+            <button type="submit" class="btn-primary h-11 px-8 text-[13px]">{{ __('Save settings') }}</button>
+        </div>
     </div>
-</div>
+</form>
 
 @push('scripts')
 <script>
-(function () {
-    const current = localStorage.getItem('theme') || 'system';
-    function paint(sel) {
-        document.querySelectorAll('.theme-opt').forEach((b) => {
-            const on = b.dataset.theme === sel;
-            b.classList.toggle('border-brand-600', on);
-            b.classList.toggle('bg-brand-50', on);
-            b.classList.toggle('text-brand-700', on);
-            b.classList.toggle('dark:bg-brand-500/10', on);
-            b.classList.toggle('dark:text-brand-400', on);
-        });
-    }
-    function apply(sel) {
-        if (sel === 'system') {
-            localStorage.removeItem('theme');
-            document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
-        } else {
-            localStorage.setItem('theme', sel);
-            document.documentElement.classList.toggle('dark', sel === 'dark');
+    (function () {
+        var tabs = document.querySelectorAll('.grp-tab');
+        var panels = document.querySelectorAll('[data-panel]');
+        function activate(slug) {
+            tabs.forEach(function (t) {
+                var on = t.dataset.tab === slug;
+                t.className = 'grp-tab h-9 rounded-xl px-3.5 text-[12.5px] font-bold transition ' +
+                    (on ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-ink-50'
+                        : 'text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100');
+            });
+            panels.forEach(function (p) { p.classList.toggle('hidden', p.dataset.panel !== slug); });
         }
-        paint(sel);
-    }
-    document.querySelectorAll('.theme-opt').forEach((b) => b.addEventListener('click', () => apply(b.dataset.theme)));
-    paint(current);
-})();
+        tabs.forEach(function (t) { t.addEventListener('click', function () { activate(t.dataset.tab); }); });
+        if (tabs.length) activate(tabs[0].dataset.tab);
+
+        // Color pickers: keep the swatch and the hex field in sync.
+        document.querySelectorAll('[data-color-group]').forEach(function (g) {
+            var sw = g.querySelector('[data-color-swatch]');
+            var hex = g.querySelector('[data-color-hex]');
+            sw.addEventListener('input', function () { hex.value = sw.value.toUpperCase(); });
+            hex.addEventListener('input', function () {
+                var v = hex.value.trim();
+                if (/^#?[0-9a-fA-F]{6}$/.test(v)) sw.value = '#' + v.replace('#', '');
+            });
+        });
+
+        // Secret reveal: fetch the real value on demand, toggle show/hide.
+        document.querySelectorAll('[data-reveal]').forEach(function (btn) {
+            var key = btn.dataset.reveal;
+            var input = document.querySelector('[data-secret-key="' + key + '"]');
+            var revealed = false;
+            btn.addEventListener('click', function () {
+                if (revealed) {
+                    // Hide again — restore masked state.
+                    input.type = 'password';
+                    input.value = '';
+                    revealed = false;
+                    return;
+                }
+                fetch(@json(route('admin.settings.reveal')) + '?key=' + encodeURIComponent(key), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    input.type = 'text';
+                    input.value = d.value || '';
+                    revealed = true;
+                });
+            });
+        });
+    })();
 </script>
 @endpush
 @endsection

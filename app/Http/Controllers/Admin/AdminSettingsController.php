@@ -80,6 +80,14 @@ class AdminSettingsController extends Controller
         'shopvia.markup_mode'        => ['string', 'Gateways', 'Accounts markup mode', 'percent or flat.', 'select:percent,flat'],
         'shopvia.markup_value'       => ['float',  'Gateways', 'Accounts markup value', 'Percent (e.g. 35) or flat amount.', 'number'],
 
+        // ── Announcement popup ────────────────────────────────────────
+        'popup.enabled'              => ['bool',   'Popup', 'Show popup', 'Display an announcement popup to users.', 'toggle'],
+        'popup.title'                => ['string', 'Popup', 'Popup title', 'Heading of the popup.', 'text'],
+        'popup.body'                 => ['string', 'Popup', 'Popup message', 'The announcement text.', 'textarea'],
+        'popup.button_text'          => ['string', 'Popup', 'Button label', 'e.g. Got it, Learn more.', 'text'],
+        'popup.button_url'           => ['string', 'Popup', 'Button link', 'Optional URL the button opens. Leave blank to just dismiss.', 'text'],
+        'popup.version'              => ['string', 'Popup', 'Version tag', 'Change this (e.g. to a date) to re-show the popup to everyone who dismissed it.', 'text'],
+
         // ── Support ───────────────────────────────────────────────────
         'support.whatsapp'           => ['string', 'Support', 'WhatsApp number', 'Full number with country code, e.g. 2348012345678.', 'text'],
         'support.email'              => ['string', 'Support', 'Support email', 'Where customers can reach you.', 'text'],

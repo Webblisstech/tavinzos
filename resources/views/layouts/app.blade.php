@@ -370,6 +370,8 @@
 </script>
 @endverbatim
 
+@include('partials.announcement')
+
 @stack('scripts')
 </body>
 </html>
