@@ -43,17 +43,17 @@
                         },
                         accent: '{{ $theme['accent'] }}',
                         ink: {
-                            50:  '#faf7f7',
-                            100: '#f4efef',
-                            200: '#e9e1e1',
-                            300: '#d9cdcd',
-                            400: '#a89898',
-                            500: '#3f3535',
-                            600: '#2b2323',
-                            700: '#3a3131',
-                            800: '#2e2525',
-                            900: '#14100f',
-                            950: '#100c0c'
+                            50:  '#f8f9fa',
+                            100: '#f1f3f5',
+                            200: '#e9ecef',
+                            300: '#dee2e6',
+                            400: '#adb5bd',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                            950: '#0b0f19'
                         }
                     }
                 }
@@ -64,9 +64,18 @@
     @verbatim
     <style type="text/tailwindcss">
         @layer base {
-            html { -webkit-font-smoothing: antialiased; }
-            h1, h2, h3 { letter-spacing: -0.03em; }
-            ::selection { background: #d91f2c; color: #fff; }
+            html {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                text-rendering: optimizeLegibility;
+            }
+            /* Default body text sits at a dark neutral, not a muddy mid-grey —
+               this is the main reason a UI reads "crisp" vs "faded". */
+            body { color: #1f2937; }
+            .dark body { color: #e9ecef; }
+            h1, h2, h3, h4 { letter-spacing: -0.025em; color: #111827; }
+            .dark h1, .dark h2, .dark h3, .dark h4 { color: #f8f9fa; }
+            ::selection { background: var(--accent, #2563eb); color: #fff; }
 
             /* Clear the iOS status bar / notch: the header grows by the top
                inset and pads its content down below the status bar. On desktop
