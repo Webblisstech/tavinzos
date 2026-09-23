@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#100c0c" media="(prefers-color-scheme: dark)">
@@ -167,7 +167,7 @@
     {{-- ───────────────── Main column ───────────────── --}}
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-        <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[72px] lg:px-8 dark:border-ink-800 dark:bg-ink-950/85">
+        <header class="app-header sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[72px] lg:px-8 dark:border-ink-800 dark:bg-ink-950/85">
 
             <button type="button" data-open-sidebar
                     class="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-600 transition hover:bg-ink-100 lg:hidden dark:text-ink-300 dark:hover:bg-ink-900"
@@ -176,12 +176,9 @@
             </button>
 
             {{-- Logo — mobile only (desktop shows it in the sidebar) --}}
-            <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/') }}" class="flex shrink-0 items-center gap-2 lg:hidden" aria-label="IBSolutions">
-                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-brand-600">
-                    <span class="font-sans text-[15px] font-bold leading-none tracking-[-0.04em] text-white">IB</span>
-                </span>
-                <span class="hidden text-[16px] font-bold tracking-[-0.03em] text-ink-900 dark:text-ink-50 min-[400px]:block">IBSolutions</span>
-            </a>
+            <div class="lg:hidden">
+                @include('partials.logo', ['size' => 'sm'])
+            </div>
 
             <form action="#" method="GET" class="hidden min-w-0 flex-1 md:flex md:max-w-md">
                 <label for="global-search" class="sr-only">{{ __('Search') }}</label>

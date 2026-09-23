@@ -68,6 +68,19 @@
             h1, h2, h3 { letter-spacing: -0.03em; }
             ::selection { background: #d91f2c; color: #fff; }
 
+            /* Clear the iOS status bar / notch: the header grows by the top
+               inset and pads its content down below the status bar. On desktop
+               the inset is 0, so heights are unchanged. */
+            .app-header {
+                padding-top: env(safe-area-inset-top, 0px);
+                height: calc(4rem + env(safe-area-inset-top, 0px));
+            }
+            @media (min-width: 1024px) {
+                .app-header { height: 72px; padding-top: 0; }
+            }
+            /* Bottom nav clears the home indicator. */
+            .app-bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
             /* iOS zooms into any focused input under 16px. The viewport tag
                blocks pinch-zoom; this blocks the focus auto-zoom too, without
                forcing every field's visible size up to 16px. */
