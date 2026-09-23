@@ -24,7 +24,19 @@
                 <h3 class="text-[18px] font-bold tracking-[-0.02em] text-ink-900 dark:text-ink-50">{{ $title }}</h3>
             @endif
             @if ($body !== '')
-                <p class="mt-2 whitespace-pre-line text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">{{ $body }}</p>
+                @php
+                    // Preserve intended line breaks even if the save stripped
+                    // them: put each "N." numbered item on its own line, and
+                    // keep any real newlines the admin typed.
+                    $formatted = preg_replace('/\s+(\d+\.\s)/', "\n$1", $body);
+                @endphp
+                <div class="mt-2 max-h-[50vh] space-y-2 overflow-y-auto pr-1 text-[13.5px] leading-relaxed text-ink-900 dark:text-ink-100">
+                    @foreach (preg_split('/\n+/', trim($formatted)) as $line)
+                        @if (trim($line) !== '')
+                            <p class="whitespace-pre-line">{{ trim($line) }}</p>
+                        @endif
+                    @endforeach
+                </div>
             @endif
             <div class="mt-6 flex gap-2.5">
                 @if ($url !== '')

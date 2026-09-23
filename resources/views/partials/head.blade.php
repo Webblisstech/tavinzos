@@ -71,8 +71,8 @@
             }
             /* Default body text sits at a dark neutral, not a muddy mid-grey —
                this is the main reason a UI reads "crisp" vs "faded". */
-            body { color: #1f2937; }
-            .dark body { color: #e9ecef; }
+            body { color: #111827; }
+            .dark body { color: #f1f3f5; }
             h1, h2, h3, h4 { letter-spacing: -0.025em; color: #111827; }
             .dark h1, .dark h2, .dark h3, .dark h4 { color: #f8f9fa; }
             ::selection { background: var(--accent, #2563eb); color: #fff; }
