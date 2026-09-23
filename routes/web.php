@@ -88,6 +88,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
     Route::get('/support', [SupportController::class, 'index'])->name('support.index');
+    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
     Route::prefix('wallet')->name('wallet.')->group(function () {
         Route::get('/', [WalletController::class, 'index'])->name('index');

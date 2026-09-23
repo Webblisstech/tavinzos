@@ -46,6 +46,7 @@
             ['label' => __('Virtual numbers'), 'route' => 'numbers.index', 'icon' => 'hash'],
             ['label' => __('Logs store'),      'route' => 'logs.index',    'icon' => 'layers'],
             ['label' => __('Add funds'),       'route' => 'wallet.index',  'icon' => 'wallet'],
+            ['label' => __('Transactions'),    'route' => 'transactions.index', 'icon' => 'list'],
             ['label' => __('Orders'),          'route' => 'orders.index',  'icon' => 'list'],
             ['label' => __('Affiliates'),      'route' => 'affiliates.index', 'icon' => 'users'],
             ['label' => __('Support'),         'route' => 'support.index', 'icon' => 'help'],
@@ -167,7 +168,7 @@
     {{-- ───────────────── Main column ───────────────── --}}
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-        <header class="app-header sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[72px] lg:px-8 dark:border-ink-800 dark:bg-ink-950/85">
+        <header class="app-header flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[72px] lg:px-8 dark:border-ink-800 dark:bg-ink-950/85">
 
             <button type="button" data-open-sidebar
                     class="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-600 transition hover:bg-ink-100 lg:hidden dark:text-ink-300 dark:hover:bg-ink-900"
