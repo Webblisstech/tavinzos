@@ -2,80 +2,94 @@
 
 @section('title', __('Dashboard'))
 
+@section('header')
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h2 class="text-[22px] font-bold leading-tight tracking-[-0.035em] text-ink-900 dark:text-ink-50">{{ __('Overview') }}</h2>
+            <p class="mt-1 text-[13px] text-ink-600 dark:text-ink-400">{{ __('Your wallet and activity at a glance.') }}</p>
+        </div>
+    </div>
+@endsection
+
 @section('content')
-@php
-    $hour = (int) now()->format('G');
-    $greet = $hour < 12 ? __('Good morning') : ($hour < 17 ? __('Good afternoon') : __('Good evening'));
-    $first = \Illuminate\Support\Str::of($name ?: 'there')->explode(' ')->first();
-@endphp
 
-{{-- ═══════════ Hero: balance + live pulse ═══════════ --}}
-<section class="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 text-white">
-    <div class="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border border-white/10"></div>
-    <div class="pointer-events-none absolute -right-4 top-10 h-40 w-40 rounded-full border border-white/10"></div>
-    <div class="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-white/5 blur-2xl"></div>
+{{-- ═══════════ Balance hero + delivery donut ═══════════ --}}
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-    <div class="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.3fr_1fr] lg:p-10">
-        <div class="flex flex-col justify-between">
+    {{-- Balance --}}
+    <section class="card relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-600 to-brand-700 p-5 text-white sm:p-6 lg:col-span-2">
+        <div class="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10"></div>
+        <div class="pointer-events-none absolute bottom-0 right-16 h-32 w-32 rounded-full bg-white/5"></div>
+        <div class="relative flex h-full flex-col justify-between gap-4">
             <div>
-                <p class="text-[14px] font-medium text-white/70">{{ $greet }}, {{ $first }}.</p>
-                <div class="mt-5 flex items-end gap-3">
-                    <p data-wallet-balance class="font-mono text-[40px] font-bold leading-none tracking-[-0.04em] sm:text-[52px] lg:text-[58px]">{{ $balance['formatted'] }}</p>
-                    <span class="mb-1.5 flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white/90">
-                        <span class="relative flex h-1.5 w-1.5">
-                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75"></span>
-                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
-                        </span>
-                        {{ __('Available') }}
-                    </span>
-                </div>
-                <p class="mt-2 text-[13px] text-white/60">{{ __('Spendable across numbers and accounts.') }}</p>
+                <p class="text-[10.5px] font-bold uppercase tracking-[0.12em] text-white/60 sm:text-[11px]">{{ __('Wallet balance') }}</p>
+                <p data-wallet-balance class="mt-1 font-mono text-[30px] font-bold leading-none tracking-[-0.03em] sm:text-[40px] lg:text-[46px]">{{ $balance['formatted'] }}</p>
+                <p class="mt-2 text-[12px] text-white/70">{{ __('Spendable across numbers and accounts.') }}</p>
             </div>
-
-            <div class="mt-8 flex flex-wrap gap-2.5">
-                <a href="{{ route('wallet.index') }}" class="flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-[13.5px] font-bold text-brand-700 transition hover:bg-white/90">
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('wallet.index') }}" class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-[12.5px] font-bold text-brand-700 transition hover:bg-white/90 sm:h-11">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     {{ __('Add funds') }}
                 </a>
-                <a href="{{ route('numbers.index') }}" class="flex h-11 items-center gap-2 rounded-xl bg-white/15 px-5 text-[13.5px] font-bold text-white transition hover:bg-white/25">{{ __('Buy a number') }}</a>
-                <a href="{{ route('logs.index') }}" class="flex h-11 items-center gap-2 rounded-xl bg-white/15 px-5 text-[13.5px] font-bold text-white transition hover:bg-white/25">{{ __('Browse accounts') }}</a>
+                <a href="{{ route('numbers.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Buy a number') }}</a>
+                <a href="{{ route('logs.index') }}" class="flex h-10 items-center justify-center rounded-xl bg-white/15 px-4 text-[12.5px] font-bold text-white transition hover:bg-white/25 sm:h-11">{{ __('Accounts') }}</a>
             </div>
         </div>
+    </section>
 
-        <div class="flex flex-col justify-between rounded-2xl bg-white/10 p-5 backdrop-blur-sm">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-[12.5px] font-semibold text-white/70">{{ __('Delivery rate') }}</p>
-                    <p class="mt-1 font-mono text-[26px] font-bold leading-none">{{ $rate !== null ? $rate . '%' : '—' }}</p>
-                </div>
-                <span class="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/70">{{ __('7 days') }}</span>
+    {{-- Delivery rate donut --}}
+    <section class="card flex flex-col items-center justify-center p-6">
+        <p class="text-[11.5px] font-semibold text-ink-500 dark:text-ink-400">{{ __('Delivery rate') }}</p>
+        @php
+            $pct = $rate !== null ? max(0, min(100, (float) $rate)) : 0;
+            $circ = 2 * pi() * 42;                       // r = 42
+            $dash = $circ * $pct / 100;
+        @endphp
+        <div class="relative mt-3 h-32 w-32">
+            <svg class="h-32 w-32 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10" class="text-ink-100 dark:text-ink-800"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"
+                        class="text-brand-500 transition-all duration-700"
+                        stroke-dasharray="{{ $dash }} {{ $circ }}"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="font-mono text-[24px] font-bold leading-none tracking-[-0.02em]">{{ $rate !== null ? round($rate) . '%' : '—' }}</span>
+                <span class="mt-0.5 text-[10px] font-medium text-ink-400">{{ __('7 days') }}</span>
             </div>
-            @php $tmax = max(1, max($trend ?: [1])); @endphp
-            <div class="mt-5 flex h-16 items-end gap-1.5">
-                @foreach ($trend as $t)
-                    <div class="flex-1"><div class="w-full rounded-md bg-white/25 transition hover:bg-white/50" style="height: {{ max(6, round($t / $tmax * 100)) }}%"></div></div>
-                @endforeach
-            </div>
-            <p class="mt-3 text-[11.5px] text-white/50">{{ __('Codes delivered vs cancelled, daily.') }}</p>
         </div>
-    </div>
-</section>
+        <p class="mt-3 text-center text-[11px] text-ink-400">{{ __('Codes delivered vs cancelled.') }}</p>
+    </section>
+</div>
 
-{{-- ═══════════ Metrics ribbon ═══════════ --}}
+{{-- ═══════════ Stat tiles ═══════════ --}}
 <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
     @php
-        $metrics = [
-            ['label' => __('Total spent'),  'value' => $spend['formatted'],   'sub' => $orders . ' ' . trans_choice('order|orders', $orders)],
-            ['label' => __('Avg. order'),   'value' => $average['formatted'], 'sub' => __('per purchase')],
-            ['label' => __('Accounts'),     'value' => number_format($accounts), 'sub' => __('bought')],
-            ['label' => __('Live numbers'), 'value' => $active . ' / ' . $ceiling, 'sub' => __('active now')],
+        $tiles = [
+            ['label' => __('Total spent'),  'value' => $spend['formatted'],   'sub' => $orders . ' ' . trans_choice('order|orders', $orders), 'icon' => 'cart',   'tone' => 'brand'],
+            ['label' => __('Avg. order'),   'value' => $average['formatted'], 'sub' => __('per purchase'), 'icon' => 'chart',  'tone' => 'sky'],
+            ['label' => __('Accounts'),     'value' => number_format($accounts), 'sub' => __('bought'),    'icon' => 'layers', 'tone' => 'violet'],
+            ['label' => __('Live numbers'), 'value' => $active . ' / ' . $ceiling, 'sub' => __('active now'), 'icon' => 'hash', 'tone' => 'emerald'],
+        ];
+        $tones = [
+            'brand'=>'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400',
+            'sky'=>'bg-sky-50 text-sky-600 dark:bg-sky-400/10 dark:text-sky-400',
+            'violet'=>'bg-violet-50 text-violet-600 dark:bg-violet-400/10 dark:text-violet-400',
+            'emerald'=>'bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400',
         ];
     @endphp
-    @foreach ($metrics as $m)
+    @foreach ($tiles as $t)
         <div class="card p-4">
-            <p class="text-[11.5px] font-medium text-ink-500 dark:text-ink-400">{{ $m['label'] }}</p>
-            <p class="mt-1.5 font-mono text-[20px] font-bold tracking-[-0.02em] text-ink-900 dark:text-ink-50">{{ $m['value'] }}</p>
-            <p class="mt-0.5 text-[11px] text-ink-400">{{ $m['sub'] }}</p>
+            <span class="grid h-10 w-10 place-items-center rounded-xl {{ $tones[$t['tone']] }}">
+                @switch($t['icon'])
+                    @case('cart')   <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg> @break
+                    @case('chart')  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> @break
+                    @case('layers') <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg> @break
+                    @default        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
+                @endswitch
+            </span>
+            <p class="mt-3 font-mono text-[20px] font-bold tracking-[-0.02em] text-ink-900 dark:text-ink-50">{{ $t['value'] }}</p>
+            <p class="text-[12px] font-semibold text-ink-600 dark:text-ink-300">{{ $t['label'] }}</p>
+            <p class="mt-0.5 text-[11px] text-ink-400">{{ $t['sub'] }}</p>
         </div>
     @endforeach
 </div>
@@ -84,13 +98,7 @@
 @if ($live->isNotEmpty())
     <section class="card mt-4 p-5 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="relative flex h-2 w-2">
-                    <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                    <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-                </span>
-                <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ __('Waiting for a code') }}</h3>
-            </div>
+            <h3 class="text-[14px] font-bold tracking-[-0.02em]">{{ __('Waiting for a code') }}</h3>
             <a href="{{ route('orders.index') }}" class="text-[12px] font-bold text-brand-600 hover:underline dark:text-brand-400">{{ __('All orders') }}</a>
         </div>
         <div class="space-y-2">
