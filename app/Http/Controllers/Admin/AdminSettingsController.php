@@ -94,6 +94,9 @@ class AdminSettingsController extends Controller
         'support.telegram'           => ['string', 'Support', 'Telegram handle/link', 'e.g. @yoursupport or a t.me link.', 'text'],
         'support.group'              => ['string', 'Support', 'Group link', 'WhatsApp/Telegram group link shown across the app.', 'text'],
         'support.group_label'        => ['string', 'Support', 'Group button label', 'e.g. Join our WhatsApp group.', 'text'],
+        'popup.group_enabled'        => ['bool',   'Support', 'Show group popup', 'Pop up the group invite once per visit.', 'toggle'],
+        'popup.group_title'          => ['string', 'Support', 'Group popup title', 'e.g. Join our community.', 'text'],
+        'popup.group_body'           => ['string', 'Support', 'Group popup message', 'Short line inviting users to the group.', 'textarea'],
         'support.hours'              => ['string', 'Support', 'Support hours', 'e.g. 24/7 or Mon–Fri, 9am–6pm.', 'text'],
         'support.message'            => ['string', 'Support', 'Support blurb', 'A short line shown on the contact page.', 'text'],
 

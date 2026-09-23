@@ -383,6 +383,7 @@
 @endverbatim
 
 @include('partials.announcement')
+@include('partials.group-modal')
 
 @stack('scripts')
 </body>
