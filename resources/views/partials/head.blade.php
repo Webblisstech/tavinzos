@@ -71,7 +71,10 @@
             }
             /* Default body text sits at a dark neutral, not a muddy mid-grey —
                this is the main reason a UI reads "crisp" vs "faded". */
-            body { color: #111827; }
+            /* A slightly heavier default weight everywhere gives the crisp,
+               confident look (FamsUp-style). Tailwind's font-* utility classes
+               still override this wherever they're used. */
+            body { color: #111827; font-weight: 500; }
             .dark body { color: #f1f3f5; }
             h1, h2, h3, h4 { letter-spacing: -0.025em; color: #111827; }
             .dark h1, .dark h2, .dark h3, .dark h4 { color: #f8f9fa; }
@@ -232,12 +235,12 @@
                        rounded-[2px] bg-ink-100 dark:bg-ink-800;
             }
             .nav-link {
-                @apply flex h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-medium
-                       text-ink-600 transition hover:bg-ink-100 hover:text-ink-900
-                       dark:text-ink-300 dark:hover:bg-ink-900 dark:hover:text-ink-50;
+                @apply flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] font-semibold
+                       text-ink-800 transition hover:bg-ink-100 hover:text-ink-900
+                       dark:text-ink-200 dark:hover:bg-ink-900 dark:hover:text-ink-50;
             }
             .nav-link-active {
-                @apply bg-brand-50 font-semibold text-brand-700
+                @apply bg-brand-50 font-bold text-brand-700
                        hover:bg-brand-50 hover:text-brand-700
                        dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/10 dark:hover:text-brand-400;
             }
