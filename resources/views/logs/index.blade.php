@@ -92,12 +92,12 @@
                         </div>
 
                         @if ($p['pre_order'] && $p['stock'] === 0)
-                            <span class="hidden shrink-0 items-center gap-1.5 rounded-lg bg-amber-100 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 sm:inline-flex dark:bg-amber-400/15 dark:text-amber-300">
+                            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-100 px-2 py-1 text-[10.5px] font-bold text-amber-700 sm:text-[11.5px] dark:bg-amber-400/15 dark:text-amber-300">
                                 <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>{{ __('Pre-order') }}
                             </span>
                         @else
-                            <span class="hidden shrink-0 items-center gap-1.5 rounded-lg bg-emerald-100 px-2.5 py-1 text-[11.5px] font-bold text-emerald-700 sm:inline-flex dark:bg-emerald-400/15 dark:text-emerald-300">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $p['stock'] }} {{ __('pcs') }}
+                            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-100 px-2 py-1 text-[10.5px] font-bold text-emerald-700 sm:text-[11.5px] dark:bg-emerald-400/15 dark:text-emerald-300">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ number_format($p['stock']) }} {{ __('pcs') }}
                             </span>
                         @endif
 
