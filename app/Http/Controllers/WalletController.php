@@ -137,9 +137,9 @@ class WalletController extends Controller
                 'body'       => $body ?: mb_substr((string) $response->body(), 0, 400),
             ]);
 
-            // Roll the pending row back so it doesn't linger.
-            DB::table('wallet_transactions')->where('reference', $reference)->delete();
-
+            // Keep the pending row — the gateway may still have created the
+            // payment. The customer can retry, and "Check status" can settle it
+            // if they actually paid. We only remove truly-stale pendings elsewhere.
             return back()->withErrors(['amount' => __('Could not start the payment. Please try again.')]);
         }
 
@@ -314,8 +314,13 @@ class WalletController extends Controller
     private function settle(string $reference, ?int $userId = null): array
     {
         $pending = DB::table('wallet_transactions')
-            ->where('gateway_ref', $reference)
+            ->where(function ($q) use ($reference) {
+                $q->where('gateway_ref', $reference)
+                  ->orWhere('reference', $reference);
+            })
+            ->where('type', 'topup')
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->orderByDesc('id')
             ->first();
 
         if (! $pending) {
