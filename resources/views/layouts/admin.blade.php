@@ -58,11 +58,19 @@
 
         <div class="flex h-16 shrink-0 items-center justify-between px-4 lg:h-[68px]">
             <a href="{{ Route::has('admin.dashboard') ? route('admin.dashboard') : route('admin.logs.index') }}" class="flex items-center gap-2.5">
+                @php
+                    $brand = trim((string) (\Illuminate\Support\Facades\Cache::get('settings')['site.name'] ?? '')) ?: config('app.name', 'App');
+                @endphp
                 <span class="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-brand-600">
-                    <span class="font-sans text-[17px] font-bold leading-none tracking-[-0.04em] text-white">IB</span>
+                    <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 16.5v-2M9 16.5v-5M13 16.5v-8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                        <path d="M5 12.5c3-4 6-5.5 9.5-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/>
+                        <circle cx="18" cy="6.5" r="3.4" fill="currentColor"/>
+                        <path d="m16.7 6.5 1 1 1.6-1.9" stroke="#D91F2C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </span>
                 <span class="flex flex-col leading-tight">
-                    <span class="text-[15px] font-bold tracking-[-0.03em] text-ink-900 dark:text-ink-50">IBSolutions</span>
+                    <span class="text-[15px] font-bold tracking-[-0.03em] text-ink-900 dark:text-ink-50">{{ $brand }}</span>
                     <span class="text-[10px] font-bold tracking-[0.14em] text-brand-600 dark:text-brand-400">ADMIN</span>
                 </span>
             </a>
@@ -120,7 +128,7 @@
     {{-- ───────── Main column ───────── --}}
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-        <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[68px] dark:border-ink-800 dark:bg-ink-950/85">
+        <header class="flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:h-[68px] dark:border-ink-800 dark:bg-ink-950/85">
 
             <button type="button" data-open-admin
                     class="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-600 transition hover:bg-ink-100 lg:hidden dark:text-ink-300 dark:hover:bg-ink-900"
