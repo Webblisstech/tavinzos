@@ -274,6 +274,18 @@ class LogAdminController extends Controller
         return back()->with('status', 'Product hidden and unsold stock cleared.');
     }
 
+    /** Quick hide/show — flips is_active without touching stock. */
+    public function toggle(int $product)
+    {
+        $row = DB::table('log_products')->where('id', $product)->first();
+        abort_unless($row, 404);
+
+        DB::table('log_products')->where('id', $product)
+            ->update(['is_active' => ! $row->is_active, 'updated_at' => now()]);
+
+        return back()->with('status', $row->is_active ? 'Product hidden.' : 'Product is now visible.');
+    }
+
     // ═══════════════════════ Internals ═══════════════════════
 
     private function validated(Request $request): array

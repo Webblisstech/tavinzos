@@ -153,6 +153,10 @@
                 <button type="button" data-toggle="stock-{{ $p->id }}" class="btn-ghost h-9 text-[12px]">{{ __('Add stock') }}</button>
                 <button type="button" data-items="{{ $p->id }}" data-toggle="items-{{ $p->id }}" class="btn-ghost h-9 text-[12px]">{{ __('Manage') }}</button>
                 <button type="button" data-toggle="edit-{{ $p->id }}" class="btn-ghost h-9 text-[12px]">{{ __('Edit') }}</button>
+                <form method="POST" action="{{ route('admin.logs.toggle', $p->id) }}" class="inline">
+                    @csrf
+                    <button type="submit" class="btn-ghost h-9 text-[12px] {{ $p->is_active ? '' : 'text-emerald-600 dark:text-emerald-400' }}">{{ $p->is_active ? __('Hide') : __('Show') }}</button>
+                </form>
             </div>
 
             {{-- Add stock --}}

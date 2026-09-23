@@ -35,6 +35,12 @@ class LogStoreController extends Controller
         $products = DB::table('log_products')
             ->where('log_products.is_active', true)
             ->leftJoin('log_categories', 'log_categories.id', '=', 'log_products.log_category_id')
+            // Hide products in a hidden category. Products with no category
+            // (null) still show — they fall into the "Other" bucket.
+            ->where(function ($q) {
+                $q->whereNull('log_products.log_category_id')
+                  ->orWhere('log_categories.is_active', true);
+            })
             ->select('log_products.*')
             ->selectSub($stock, 'stock')
             ->selectRaw('COALESCE(log_products.previewable, 0) AS previewable')
@@ -360,6 +366,14 @@ class LogStoreController extends Controller
 
         if (! $product) {
             return $this->fail('That product is no longer available.', 404);
+        }
+
+        // Block products whose category has been hidden.
+        if ($product->log_category_id) {
+            $catActive = DB::table('log_categories')->where('id', $product->log_category_id)->value('is_active');
+            if (! $catActive) {
+                return $this->fail('That product is no longer available.', 404);
+            }
         }
 
         $qty = $chosen

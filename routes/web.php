@@ -199,6 +199,7 @@ Route::middleware('admin')->prefix('admin/accounts')->name('admin.logs.')->group
     Route::post('/{product}/stock', [LogAdminController::class, 'addStock'])->name('stock');
     Route::get('/{product}/items', [LogAdminController::class, 'items'])->name('items');
     Route::post('/{product}/destroy', [LogAdminController::class, 'destroy'])->name('destroy');
+    Route::post('/{product}/toggle', [LogAdminController::class, 'toggle'])->name('toggle');
 
     // Individual stock items
     Route::put('/item/{item}', [LogAdminController::class, 'updateItem'])->name('item.update');
