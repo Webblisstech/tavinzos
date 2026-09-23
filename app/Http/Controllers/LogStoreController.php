@@ -172,7 +172,26 @@ class LogStoreController extends Controller
     private function purchaseExternal(Request $request, string $extId, int $amount): JsonResponse
     {
         $amount = max(1, min(100, $amount));
+        $user   = $request->user();
 
+        // Block a second purchase of the same product by the same user while the
+        // first is still in flight — stops rapid double-clicks and retry-after-
+        // error from charging twice. Held for up to 30s (a purchase is quick),
+        // and we only proceed if we actually got the lock.
+        $lock = Cache::lock('buy:ext:' . $user->id . ':' . $extId, 30);
+        if (! $lock->get()) {
+            return $this->fail(__('A purchase is already being processed. Please wait a moment.'), 429);
+        }
+
+        try {
+            return $this->doPurchaseExternal($request, $extId, $amount, $user);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function doPurchaseExternal(Request $request, string $extId, int $amount, $user): JsonResponse
+    {
         $product = collect(\App\Support\ShopVia::products())->firstWhere('id', $extId);
         if (! $product) {
             return $this->fail('That product is no longer available.', 404);
@@ -187,7 +206,6 @@ class LogStoreController extends Controller
             ? round((float) $ov->price, 2)
             : $this->externalRetail($product['price'])['amount'];
         $total = round($unit * $amount, 2);
-        $user  = $request->user();
 
         // Debit first, locked.
         try {
@@ -363,6 +381,22 @@ class LogStoreController extends Controller
         // for a plain quantity from the pool. Chosen tokens win.
         $chosen = array_values(array_unique($data['tokens'] ?? []));
 
+        // Block a concurrent second purchase of the same product by this user
+        // (double-click / retry-after-error) — one buy at a time per product.
+        $lock = Cache::lock('buy:log:' . $request->user()->id . ':' . $data['slug'], 30);
+        if (! $lock->get()) {
+            return $this->fail(__('A purchase is already being processed. Please wait a moment.'), 429);
+        }
+
+        try {
+            return $this->doPurchase($request, $data, $chosen);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function doPurchase(Request $request, array $data, array $chosen): JsonResponse
+    {
         $product = DB::table('log_products')->where('slug', $data['slug'])->where('is_active', true)->first();
 
         if (! $product) {

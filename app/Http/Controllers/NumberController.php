@@ -213,6 +213,25 @@ class NumberController extends Controller
     {
         $request->validate(['mode' => ['required', Rule::in(['usa', 'global'])]]);
 
+        // One number purchase at a time per user — a double-click or a retry
+        // after an error must not buy two numbers or charge twice.
+        $lock = Cache::lock('buy:num:' . $request->user()->id, 30);
+        if (! $lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('A purchase is already being processed. Please wait a moment.'),
+            ], 429);
+        }
+
+        try {
+            return $this->doPurchaseNumber($request);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function doPurchaseNumber(Request $request): JsonResponse
+    {
         $mode = $request->input('mode');
 
         // Enforce the admin pool toggles server-side — the UI hides a disabled
