@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\Auth\LoginController as AdminLoginController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\Admin\ExternalProductController;
 use App\Http\Controllers\Admin\NumberOverrideController;
 use App\Http\Controllers\Admin\AdminCustomerController;
@@ -173,6 +174,11 @@ Route::middleware('admin')->prefix('admin/numbers')->name('admin.numbers.')->gro
 Route::middleware('admin')->prefix('admin/external')->name('admin.external.')->group(function () {
     Route::get('/', [ExternalProductController::class, 'index'])->name('index');
     Route::post('/{extId}', [ExternalProductController::class, 'save'])->name('save');
+});
+
+Route::middleware('admin')->prefix('admin/system-logs')->name('admin.system-logs.')->group(function () {
+    Route::get('/', [SystemLogController::class, 'index'])->name('index');
+    Route::post('/clear', [SystemLogController::class, 'clear'])->name('clear');
 });
 
 Route::middleware('admin')->prefix('admin/settings')->name('admin.settings.')->group(function () {
