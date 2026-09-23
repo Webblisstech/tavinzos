@@ -22,6 +22,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\NumberController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\SupportController;
 use Illuminate\Support\Facades\Route;
 
