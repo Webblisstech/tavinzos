@@ -427,11 +427,17 @@ class WalletController extends Controller
         $base  = rtrim((string) \App\Support\Gateway::webblissBase(), '/');
         $token = (string) \App\Support\Gateway::webblissSecret();
 
+        // The VA endpoint is POST /api/v1/virtual-accounts on the DOMAIN ROOT.
+        // The base already ends in /api/v1, so strip any /api/vN suffix to get
+        // the root, then append the full path — avoids api/v1/api/v1/… doubling.
+        $root = preg_replace('#/api/v\d+/?$#', '', $base);
+        $vaUrl = $root . '/api/v1/virtual-accounts';
+
         try {
             $response = Http::withToken($token)
                 ->acceptJson()
                 ->timeout(20)
-                ->post($base . '/api/v1/virtual-accounts', [
+                ->post($vaUrl, [
                     'customer_name'  => $user->name,
                     'customer_email' => $user->email,
                     'customer_phone' => $phone,
