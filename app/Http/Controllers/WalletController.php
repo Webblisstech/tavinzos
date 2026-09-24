@@ -387,6 +387,9 @@ class WalletController extends Controller
 
             // Referral commission on the funded amount, same as any top-up.
             $this->creditReferralCommission($user->id, $credit);
+
+            // Email the customer their wallet was funded.
+            $this->sendFundedEmail($user->id, $credit, $after, __('Bank transfer'), $ref);
         });
     }
 
@@ -476,10 +479,46 @@ class WalletController extends Controller
         // Optional: pay the referrer their commission on this deposit.
         $this->creditReferralCommission($pending->user_id, $amount);
 
+        // Email the customer their wallet was funded.
+        $newBalance = (float) DB::table('users')->where('id', $pending->user_id)->value('wallet_balance');
+        $this->sendFundedEmail($pending->user_id, $amount, $newBalance, __('Card / Checkout'), $reference);
+
         return ['ok' => true, 'message' => __('Wallet funded with :amt.', ['amt' => $this->money($amount)['formatted']])];
     }
 
     /** If this user was referred, credit their referrer's affiliate commission. */
+    /**
+     * Email the customer that their wallet was funded. Fired from every credit
+     * path (checkout, virtual account, PaymentPoint). Never lets a mail failure
+     * break the crediting transaction.
+     */
+    private function sendFundedEmail(int $userId, float $amount, float $balanceAfter, string $method, string $reference): void
+    {
+        try {
+            $user = DB::table('users')->where('id', $userId)->first(['name', 'email']);
+            if (! $user || ! $user->email) {
+                return;
+            }
+
+            $symbol   = (string) $this->setting('numbers.currency.symbol', '₦');
+            $decimals = (int) $this->setting('numbers.currency.decimals', 0);
+            $fmt = fn ($n) => $symbol . number_format((float) $n, $decimals);
+
+            \Illuminate\Support\Facades\Mail::send('emails.funded', [
+                'name'      => $user->name ?: 'there',
+                'amount'    => $fmt($amount),
+                'balance'   => $fmt($balanceAfter),
+                'method'    => $method,
+                'reference' => $reference,
+                'date'      => now()->format('j M Y, g:i A'),
+            ], function ($m) use ($user) {
+                $m->to($user->email)->subject(__(':app — wallet funded', ['app' => config('app.name', 'Tavinzos')]));
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Funded email failed', ['user' => $userId, 'err' => $e->getMessage()]);
+        }
+    }
+
     private function creditReferralCommission(int $userId, float $amount): void
     {
         // Only if the affiliate tables exist (feature may not be migrated).
@@ -724,6 +763,9 @@ class WalletController extends Controller
             ]);
 
             $this->creditReferralCommission($user->id, $credit);
+
+            // Email the customer their wallet was funded.
+            $this->sendFundedEmail($user->id, $credit, $after, __('Bank transfer'), $txId);
         });
     }
 
