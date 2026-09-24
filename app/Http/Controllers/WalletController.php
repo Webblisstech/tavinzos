@@ -236,37 +236,60 @@ class WalletController extends Controller
         $secret    = (string) \App\Support\Gateway::webblissSecret();
 
         $expected = hash_hmac('sha256', $payload, $secret);
+        $expectedB64 = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+
+        $match = $signature && (
+            hash_equals($expected, $signature) ||
+            hash_equals($expectedB64, $signature)
+        );
 
         // hash_equals, not === : constant-time, no timing leak.
-        if (! $signature || ! hash_equals($expected, $signature)) {
+        if (! $match) {
             Log::warning('WebBlissPay webhook: bad signature', [
                 'delivery'    => $request->header('X-Webbliss-Delivery'),
-                'sig_received'=> $signature ?: '(none)',
+                'sig_received'=> $signature ?: '(NONE — no signature header sent)',
+                'sig_expected'=> $expected,
                 'secret_set'  => $secret !== '',
-                'headers'     => array_keys($request->headers->all()),
-                'body_sample' => mb_substr($payload, 0, 200),
+                'secret_len'  => strlen($secret),
+                'all_headers' => array_map(fn ($h) => is_array($h) ? ($h[0] ?? '') : $h, $request->headers->all()),
+                'body_sample' => mb_substr($payload, 0, 300),
             ]);
             return response()->json(['error' => 'invalid signature'], 401);
         }
 
-        $event = $request->input('event');
-        $data  = $request->input('data', []);
-        $channel = $data['channel'] ?? null;
+        $event   = $request->input('event');
+        $data    = $request->input('data', []);
+        $channel = $data['channel'] ?? $request->input('channel') ?? null;
+
+        // Log every accepted webhook so we can see the exact event/channel/shape
+        // WebBlissPay sends — essential for diagnosing VA credits.
+        Log::info('WebBlissPay webhook received', [
+            'event'   => $event,
+            'channel' => $channel,
+            'keys'    => array_keys($data),
+            'data'    => $data,
+        ]);
 
         // Both checkout and virtual-account arrive as payment.success; the
-        // channel tells them apart (per WebBlissPay docs).
-        if ($event === 'payment.success') {
-            if ($channel === 'checkout') {
-                // Match the pending row by the merchant_reference we created.
-                $reference = $data['merchant_reference'] ?? null;
+        // channel tells them apart. Be tolerant of naming.
+        $isSuccess = in_array($event, ['payment.success', 'charge.success', 'transaction.success', 'success'], true)
+            || ($data['status'] ?? null) === 'success'
+            || ($data['paid'] ?? false) === true;
+
+        $isVA = in_array($channel, ['virtual_account', 'virtual-account', 'va', 'bank_transfer', 'dedicated_account'], true)
+            || isset($data['account']['account_number'])
+            || isset($data['virtual_account']);
+
+        $isCheckout = $channel === 'checkout' || isset($data['merchant_reference']);
+
+        if ($isSuccess) {
+            if ($isVA) {
+                $this->creditVirtualAccount($data);
+            } elseif ($isCheckout) {
+                $reference = $data['merchant_reference'] ?? $data['reference'] ?? null;
                 if ($reference) {
-                    // settle() is idempotent — a repeat delivery finds it already
-                    // settled and does nothing (dedupe on reference).
                     $this->settle($reference);
                 }
-            } elseif ($channel === 'virtual_account') {
-                // A bank transfer into the customer's dedicated account.
-                $this->creditVirtualAccount($data);
             }
         }
 
@@ -283,29 +306,60 @@ class WalletController extends Controller
      */
     private function creditVirtualAccount(array $data): void
     {
-        $accountNumber = $data['account']['account_number'] ?? null;
-        $email         = $data['customer']['email'] ?? null;
-        $ref           = $data['reference'] ?? null;
+        // The account number, amount and reference may sit at slightly different
+        // paths depending on the payload — check the common ones.
+        $accountNumber = $data['account']['account_number']
+            ?? $data['virtual_account']['account_number']
+            ?? $data['account_number']
+            ?? $data['receiver']['account_number']
+            ?? null;
 
-        // Credit what our wallet received after fees. Fall back to amount if
-        // net_amount is absent for any reason.
-        $credit = (float) ($data['net_amount'] ?? $data['amount'] ?? 0);
+        $email = $data['customer']['email'] ?? $data['email'] ?? null;
+
+        $ref = $data['reference']
+            ?? $data['transaction_reference']
+            ?? $data['trans_id']
+            ?? $data['id']
+            ?? null;
+
+        // Credit what our wallet received after fees. Fall back through the
+        // likely amount fields.
+        $credit = (float) ($data['net_amount']
+            ?? $data['settlement_amount']
+            ?? $data['amount_paid']
+            ?? $data['amount']
+            ?? 0);
 
         if ($credit <= 0 || ! $ref || (! $accountNumber && ! $email)) {
-            Log::warning('VA webhook: incomplete payload', ['ref' => $ref, 'data' => $data]);
+            Log::warning('VA webhook: incomplete payload', ['ref' => $ref, 'account' => $accountNumber, 'credit' => $credit, 'data' => $data]);
             return;
         }
 
-        DB::transaction(function () use ($accountNumber, $email, $credit, $ref) {
-            // Locate the customer by the account the money landed in, else email.
-            $q = DB::table('users');
-            $accountNumber ? $q->where('va_account_number', $accountNumber)
-                           : $q->where('email', $email);
-            $user = $q->lockForUpdate()->first();
+        DB::transaction(function () use ($accountNumber, $email, $credit, $ref, $data) {
+            // Find the customer by the account the money landed in; if that
+            // doesn't match, fall back to their email — the payload carries both,
+            // and the VA account may be stored differently (or not at all) here.
+            $user = null;
+            if ($accountNumber) {
+                $user = DB::table('users')->where('va_account_number', $accountNumber)->lockForUpdate()->first();
+            }
+            if (! $user && $email) {
+                $user = DB::table('users')->where('email', $email)->lockForUpdate()->first();
+            }
 
             if (! $user) {
-                Log::warning('VA webhook: no matching user', compact('accountNumber', 'email', 'ref'));
+                Log::warning('VA webhook: no matching user', ['account' => $accountNumber, 'email' => $email, 'ref' => $ref]);
                 return;
+            }
+
+            // If we matched by email and the account number wasn't on file yet,
+            // store it now so future transfers match directly.
+            if ($accountNumber && ($user->va_account_number ?? null) !== $accountNumber) {
+                DB::table('users')->where('id', $user->id)->update([
+                    'va_account_number' => $accountNumber,
+                    'va_account_name'   => $data['account']['account_name'] ?? $data['account_name'] ?? ($user->va_account_name ?? null),
+                    'va_bank_name'      => $data['account']['bank_name'] ?? $data['bank_name'] ?? ($user->va_bank_name ?? null),
+                ]);
             }
 
             // Idempotency: events are at-least-once, so dedupe on the transfer
