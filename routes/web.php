@@ -97,6 +97,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/deposit', [WalletController::class, 'deposit'])->name('deposit');
         Route::get('/callback', [WalletController::class, 'callback'])->name('callback');
         Route::get('/recheck/{reference}', [WalletController::class, 'recheck'])->name('recheck');
+        Route::get('/status/{reference}', [WalletController::class, 'status'])->name('status');
     Route::match(['get', 'post'], 'virtual-account', [WalletController::class, 'virtualAccount'])->name('virtual-account');
     });
 

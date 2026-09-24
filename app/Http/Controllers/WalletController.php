@@ -210,6 +210,17 @@ class WalletController extends Controller
         );
     }
 
+    /** JSON status check — for the wallet page to poll pending payments silently. */
+    public function status(Request $request, string $reference)
+    {
+        $result = $this->settle($reference, $request->user()->id);
+
+        return response()->json([
+            'settled' => $result['ok'],
+            'message' => $result['message'],
+        ]);
+    }
+
     /**
      * Gateway webhook. Signed with HMAC-SHA256 of the raw body, keyed with
      * our secret. We verify the signature, then settle by reference — the

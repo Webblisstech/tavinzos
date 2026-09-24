@@ -164,6 +164,13 @@
             </div>
             <div class="flex shrink-0 items-center gap-3">
                 @if ($pending)
+                    <span data-pending-ref="{{ $t['ref'] }}" class="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
+                        <span class="relative flex h-1.5 w-1.5">
+                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                        </span>
+                        {{ __('Confirming…') }}
+                    </span>
                     <a href="{{ route('wallet.recheck', $t['ref']) }}"
                        class="rounded-lg border border-ink-300 px-2.5 py-1 text-[11px] font-semibold transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 dark:border-ink-700 dark:hover:bg-brand-500/10 dark:hover:text-brand-400">{{ __('Check status') }}</a>
                 @endif
@@ -180,6 +187,48 @@
 </section>
 
 @push('scripts')
+
+<script>
+(function () {
+    // Auto-confirm pending payments: silently poll the status endpoint every
+    // few seconds so the wallet updates on its own — no "Check status" needed.
+    var pending = document.querySelectorAll('[data-pending-ref]');
+    if (!pending.length) return;
+
+    var statusBase = @json(url('wallet/status'));
+    var tries = 0;
+    var maxTries = 40;   // ~2 minutes at 3s intervals
+
+    function poll() {
+        tries++;
+        var anyStillPending = false;
+
+        pending.forEach(function (el) {
+            var ref = el.dataset.pendingRef;
+            if (!ref || el.dataset.done === '1') return;
+            anyStillPending = true;
+
+            fetch(statusBase + '/' + encodeURIComponent(ref), { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d && d.settled) {
+                        el.dataset.done = '1';
+                        // Reload so the balance + row status refresh cleanly.
+                        location.reload();
+                    }
+                })
+                .catch(function () {});
+        });
+
+        if (anyStillPending && tries < maxTries) {
+            setTimeout(poll, 3000);
+        }
+    }
+
+    // First check quickly (in case it already settled), then keep polling.
+    setTimeout(poll, 1500);
+})();
+</script>
 
 {{-- Phone modal — shown when the VA API needs a valid 11-digit number --}}
 <div id="phone-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
