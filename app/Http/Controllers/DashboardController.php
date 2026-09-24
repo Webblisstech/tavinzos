@@ -90,6 +90,9 @@ class DashboardController extends Controller
             ->sum('amount');
 
         return view('dashboard', [
+            'banners'  => DB::getSchemaBuilder()->hasTable('banners')
+                ? DB::table('banners')->where('active', true)->orderBy('sort')->orderByDesc('id')->get()
+                : collect(),
             'balance'  => $this->money((float) $request->user()->wallet_balance),
             'active'   => $active,
             'ceiling'  => (int) $this->setting('numbers.max_active_per_user', 10),
