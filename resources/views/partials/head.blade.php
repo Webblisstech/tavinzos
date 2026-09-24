@@ -25,7 +25,7 @@
                 extend: {
                     fontFamily: {
                         sans: [{!! collect(explode(',', $theme['font_stack']))->map(fn($f) => "'".trim($f, " '")."'")->implode(', ') !!}],
-                        mono: ['DM Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+                        mono: ['CurrencyFallback', 'DM Mono', 'Roboto Mono', 'Noto Sans Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace']
                     },
                     borderRadius: { DEFAULT: 'var(--app-radius)' },
                     colors: {
@@ -64,6 +64,15 @@
     @verbatim
     <style type="text/tailwindcss">
         @layer base {
+            /* Some fonts (DM Mono, certain UI fonts) lack the Naira ₦ and other
+               currency glyphs, so Android renders them as tofu (□). Map those
+               specific codepoints to a system font that always has them, without
+               changing the font for the rest of the text. */
+            @font-face {
+                font-family: 'CurrencyFallback';
+                src: local('Roboto'), local('Noto Sans'), local('Segoe UI'), local('Arial');
+                unicode-range: U+20A6, U+20A0-20BF, U+00A2-00A5, U+20B9, U+20AC, U+00A3, U+00A5;
+            }
             /* SVG icon reliability on Android WebViews / in-app browsers:
                some don't apply CSS width/height to inline <svg> and render them
                at 0 or a huge default. Force sane sizing and inheritance. */
