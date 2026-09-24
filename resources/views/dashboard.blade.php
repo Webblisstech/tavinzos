@@ -35,26 +35,7 @@
 </section>
 
 {{-- ═══════════ Sliding banners ═══════════ --}}
-@if ($banners->isNotEmpty())
-<div id="banner-slider" class="mt-4 overflow-hidden rounded-2xl" data-count="{{ $banners->count() }}">
-    <div id="banner-track" class="flex transition-transform duration-500 ease-out">
-        @foreach ($banners as $b)
-            <div class="w-full shrink-0">
-                @if ($b->link)<a href="{{ $b->link }}" target="_blank" rel="noopener">@endif
-                    <img src="{{ route('media.show', $b->image) }}" alt="{{ $b->title }}" class="aspect-[3/1] w-full object-cover sm:aspect-[4/1]">
-                @if ($b->link)</a>@endif
-            </div>
-        @endforeach
-    </div>
-    @if ($banners->count() > 1)
-    <div id="banner-dots" class="mt-2 flex justify-center gap-1.5">
-        @foreach ($banners as $i => $b)
-            <button type="button" data-dot="{{ $i }}" class="h-1.5 rounded-full bg-ink-300 transition-all dark:bg-ink-700" style="width: {{ $i === 0 ? '18px' : '6px' }}"></button>
-        @endforeach
-    </div>
-    @endif
-</div>
-@endif
+@include('partials.banners', ['class' => 'mt-4'])
 
 {{-- ═══════════ Stat tiles ═══════════ --}}
 <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -201,35 +182,4 @@
         @endif
     </div>
 </div>
-@push('scripts')
-<script>
-(function () {
-    var slider = document.getElementById('banner-slider');
-    if (!slider) return;
-    var track = document.getElementById('banner-track');
-    var count = parseInt(slider.dataset.count, 10);
-    if (count < 2) return;
-    var dots = slider.querySelectorAll('[data-dot]');
-    var i = 0, timer;
-    function go(n) {
-        i = (n + count) % count;
-        track.style.transform = 'translateX(-' + (i * 100) + '%)';
-        dots.forEach(function (d, idx) {
-            d.style.width = idx === i ? '18px' : '6px';
-            d.classList.toggle('bg-brand-500', idx === i);
-            d.classList.toggle('bg-ink-300', idx !== i);
-        });
-    }
-    function next() { go(i + 1); }
-    function start() { timer = setInterval(next, 4500); }
-    function stop() { clearInterval(timer); }
-    dots.forEach(function (d) {
-        d.addEventListener('click', function () { stop(); go(parseInt(d.dataset.dot, 10)); start(); });
-    });
-    slider.addEventListener('mouseenter', stop);
-    slider.addEventListener('mouseleave', start);
-    go(0); start();
-})();
-</script>
-@endpush
 @endsection

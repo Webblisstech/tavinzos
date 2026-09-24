@@ -27,6 +27,8 @@
 @endsection
 
 @section('content')
+
+@include('partials.banners', ['class' => 'mb-4'])
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
 
     {{-- ═══════════════ The order form ═══════════════ --}}

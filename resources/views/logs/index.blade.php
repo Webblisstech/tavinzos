@@ -28,6 +28,8 @@
 
 @section('content')
 
+@include('partials.banners', ['class' => 'mb-4'])
+
 {{-- Sticky category jump bar --}}
 @if (count($groups) > 1)
     <div class="mb-5 flex flex-wrap gap-2">
