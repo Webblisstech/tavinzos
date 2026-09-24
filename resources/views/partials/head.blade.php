@@ -64,6 +64,24 @@
     @verbatim
     <style type="text/tailwindcss">
         @layer base {
+            /* SVG icon reliability on Android WebViews / in-app browsers:
+               some don't apply CSS width/height to inline <svg> and render them
+               at 0 or a huge default. Force sane sizing and inheritance. */
+            svg {
+                display: inline-block;
+                vertical-align: middle;
+                max-width: 100%;
+                flex-shrink: 0;
+            }
+            /* An inline SVG with no intrinsic width/height collapses to 0 on some
+               Android WebViews. Give a 1em fallback; Tailwind h-/w- classes,
+               being more specific, still override this where present. */
+            svg:not([width]) { width: 1em; }
+            svg:not([height]) { height: 1em; }
+            /* Icons sized only by Tailwind h-/w- classes: guarantee they inherit
+               a stroke color even if a parent forgot to set one. */
+            svg[stroke="currentColor"] { stroke: currentColor; }
+            svg[fill="currentColor"] { fill: currentColor; }
             html {
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
