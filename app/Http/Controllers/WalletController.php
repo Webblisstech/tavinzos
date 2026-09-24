@@ -168,11 +168,31 @@ class WalletController extends Controller
             return redirect()->route('wallet.index')->withErrors(['amount' => __('Missing payment reference.')]);
         }
 
-        $result = $this->settle($reference, $request->user()->id);
+        // The callback often fires the instant the user is redirected — a beat
+        // before the gateway has finished marking the payment paid. Retry the
+        // settle a few times with a short pause before giving up, so most
+        // payments confirm here without the customer needing "Check status".
+        $result = ['ok' => false, 'message' => ''];
+        for ($attempt = 1; $attempt <= 4; $attempt++) {
+            $result = $this->settle($reference, $request->user()->id);
+            if ($result['ok']) {
+                break;
+            }
+            // Stop early on a hard failure (not-found, amount mismatch); only
+            // retry the "not confirmed yet" case.
+            if (! str_contains($result['message'], __('not confirmed yet'))) {
+                break;
+            }
+            if ($attempt < 4) {
+                sleep(2);   // brief pause, then re-verify
+            }
+        }
 
         return redirect()->route('wallet.index')->with(
             $result['ok'] ? 'status' : 'error',
-            $result['message']
+            $result['ok']
+                ? $result['message']
+                : __('We received your return from payment. If you were charged, your wallet will update shortly — you can also tap "Check status".')
         );
     }
 
