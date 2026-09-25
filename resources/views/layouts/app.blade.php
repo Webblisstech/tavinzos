@@ -386,5 +386,20 @@
 @include('partials.group-modal')
 
 @stack('scripts')
+
+    <script type="text/javascript">
+    var _smartsupp = _smartsupp || {};
+    _smartsupp.key = 'e1b4775f63bb0e1902aa06e3549ff9af67e3141b';
+    window.smartsupp||(function(d){
+        var s,c,o=smartsupp=function(){o._.push(arguments)};o._=[];
+        s=d.getElementsByTagName('script')[0];
+        c=d.createElement('script');
+        c.type='text/javascript'; c.charset='utf-8'; c.async=true;
+        c.src='https://www.smartsuppchat.com/loader.js?';
+        s.parentNode.insertBefore(c,s);
+    })(document);
+    </script>
+    <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
+    <script>smartsupp('group','RUsqMaIw3e');</script>
 </body>
 </html>
