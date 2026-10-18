@@ -22,6 +22,12 @@ use Illuminate\Validation\Rule;
  * through. Every response is rebuilt from a whitelist, so a customer never
  * sees the supplier, the cost price, a route handle, an activation ID, or
  * upstream error wording.
+ *
+ * Money rules:
+ *   - one purchase at a time per customer (cache lock)
+ *   - one cancel at a time per order (cache lock)
+ *   - one refund per order, ever (atomic claim on refunded_at)
+ *   - the customer is charged exactly the price they were shown
  */
 class NumberController extends Controller
 {
@@ -151,6 +157,11 @@ class NumberController extends Controller
             'service' => ['required', 'string', 'max:64'],
         ]);
 
+        // Block a disabled service server-side — before asking upstream.
+        if (\App\Support\NumberOverrides::serviceBlocked($input['service'], $input['service'])) {
+            return $this->fail(['code' => 'INVALID_SERVICE', 'status' => 422]);
+        }
+
         $response = $this->call('global', 'post', '/prices', [
             'country' => $input['country'],
             'service' => $input['service'],
@@ -158,11 +169,6 @@ class NumberController extends Controller
 
         if (! $response['ok']) {
             return $this->fail($response);
-        }
-
-        // Block a disabled service server-side.
-        if (\App\Support\NumberOverrides::serviceBlocked($input['service'], $input['service'])) {
-            return $this->fail(['code' => 'INVALID_SERVICE', 'status' => 422]);
         }
 
         $tiers = collect($response['data']['tiers'] ?? [])
@@ -215,7 +221,7 @@ class NumberController extends Controller
 
         // One number purchase at a time per user — a double-click or a retry
         // after an error must not buy two numbers or charge twice.
-        $lock = Cache::lock('buy:num:' . $request->user()->id, 30);
+        $lock = Cache::lock('buy:num:' . $request->user()->id, 60);
         if (! $lock->get()) {
             return response()->json([
                 'success' => false,
@@ -236,8 +242,7 @@ class NumberController extends Controller
 
         // Enforce the admin pool toggles server-side — the UI hides a disabled
         // tab, but a crafted request must be refused too.
-        $enabledKey = 'numbers.' . $mode . '.enabled';
-        if (! (bool) $this->setting($enabledKey, true)) {
+        if (! (bool) $this->setting('numbers.' . $mode . '.enabled', true)) {
             return $this->fail(['code' => 'POOL_DISABLED', 'status' => 422]);
         }
 
@@ -258,9 +263,19 @@ class NumberController extends Controller
             ], 422);
         }
 
-        $cost  = (float) $intent['cost'];
-        $price = $this->sell($cost);
-        $hold  = 'HOLD' . strtoupper(Str::random(8));
+        $cost = (float) $intent['cost'];
+
+        // Charge EXACTLY what the page showed: same service and country keys
+        // the catalogue/prices endpoints use, so admin price rules apply here
+        // too. (Before, purchase ignored them — customers could pay more or
+        // less than the price on screen.)
+        $price = $this->sell($cost, $intent['price_service'] ?? null, $intent['price_country'] ?? null);
+
+        if ($price <= 0) {
+            return $this->fail(['code' => 'INVALID_SERVICE', 'status' => 422]);
+        }
+
+        $hold = 'HOLD' . strtoupper(Str::random(8));
 
         // ── 2. Take the money ────────────────────────────────────────
         try {
@@ -300,6 +315,17 @@ class NumberController extends Controller
 
         // ── 4. Put the money back if it did not work ─────────────────
         if (! $response['ok']) {
+            if (($response['code'] ?? null) === 'TRANSPORT_ERROR') {
+                // We could not hear the answer — the number may still have
+                // been issued upstream. Refund (the customer must not pay for
+                // nothing), but log loudly so it can be reconciled.
+                Log::warning('Number purchase outcome unknown — refunded, check upstream', [
+                    'user_id' => $request->user()->id,
+                    'mode'    => $mode,
+                    'hold'    => $hold,
+                ]);
+            }
+
             $this->credit($request->user()->id, $price, 'reversal', null,
                 'Purchase failed — hold ' . $hold . ' released');
 
@@ -314,18 +340,18 @@ class NumberController extends Controller
             Cache::forget($this->quoteKey($request, $intent['token']));
         }
 
+        $row = DB::table('verifications')->where('reference', $ref)->first();
+
         // Tie the debit to the order now that the order exists.
         DB::table('wallet_transactions')
             ->where('reference', $hold)
             ->update([
-                'verification_id' => DB::table('verifications')->where('reference', $ref)->value('id'),
+                'verification_id' => $row->id,
                 'updated_at'      => now(),
             ]);
 
         // Count this toward the buyer's spend — may pay their referrer.
         \App\Support\Referral::recordSpend($request->user()->id, $price);
-
-        $row = DB::table('verifications')->where('reference', $ref)->first();
 
         return $this->ok(
             $this->presentOrder($row) + ['balance' => $this->moneyRaw($balanceAfter)],
@@ -387,7 +413,8 @@ class NumberController extends Controller
     /**
      * What we intend to buy, priced, before any money or network moves.
      *
-     * @return array{cost: float, name: ?string, code: ?string, payload: array}|array{error: array}
+     * price_service / price_country are the exact keys the page used to price
+     * the item, so sell() lands on the same figure the customer saw.
      */
     private function usaIntent(Request $request): array
     {
@@ -401,11 +428,18 @@ class NumberController extends Controller
             return ['error' => $this->err('INVALID_SERVICE', 422)];
         }
 
+        // A service the admin hid must not be buyable by a crafted request.
+        if (\App\Support\NumberOverrides::serviceBlocked($service['name'] ?? null, $service['code'] ?? null)) {
+            return ['error' => $this->err('INVALID_SERVICE', 422)];
+        }
+
         return [
-            'cost'    => (float) $service['price'],
-            'name'    => $service['name'] ?? null,
-            'code'    => $input['code'],
-            'payload' => [
+            'cost'          => (float) $service['price'],
+            'name'          => $service['name'] ?? null,
+            'code'          => $input['code'],
+            'price_service' => $service['name'] ?? null,     // as presentCatalogue()
+            'price_country' => null,
+            'payload'       => [
                 'country'  => 'USA',
                 'app'      => $input['code'],
                 'app_name' => $service['name'] ?? null,
@@ -431,11 +465,13 @@ class NumberController extends Controller
         }
 
         return [
-            'cost'    => (float) $quote['price'],
-            'name'    => $input['service_name'] ?? null,
-            'code'    => $quote['service'],
-            'token'   => $input['quote'],
-            'payload' => array_filter([
+            'cost'          => (float) $quote['price'],
+            'name'          => $input['service_name'] ?? null,
+            'code'          => $quote['service'],
+            'token'         => $input['quote'],
+            'price_service' => $quote['service'],              // as globalPrices()
+            'price_country' => (string) $quote['country'],
+            'payload'       => array_filter([
                 'country'      => $quote['country'],
                 'service'      => $quote['service'],
                 'price'        => $quote['price'],   // exactly as quoted
@@ -597,6 +633,20 @@ class NumberController extends Controller
                 'status' => 'Completed',
                 'code'   => $order->code,
                 'number' => $order->phone_number,
+                'refunded' => $order->refunded_at !== null,
+                'refund_claimable' => false,
+            ]);
+        }
+
+        // Already refunded locally — nothing upstream can change that.
+        if ($order->refunded_at) {
+            return $this->ok([
+                'ref'    => $ref,
+                'mode'   => $order->gateway,
+                'status' => 'Cancelled',
+                'code'   => null,
+                'number' => $order->phone_number,
+                'refunded' => true,
                 'refund_claimable' => false,
             ]);
         }
@@ -619,9 +669,9 @@ class NumberController extends Controller
             'code'   => $data['code'] ?? null,
             'number' => $data['phone_number'] ?? $order->phone_number,
             // Whether WE have already refunded this order locally.
-            'refunded' => $order->refunded_at !== null,
-            // A poll never moves money: false means the refund is still claimable.
-            'refund_claimable' => $status === 'Cancelled' && $order->refunded_at === null,
+            'refunded' => false,
+            // A poll never moves money: true means the customer may claim it.
+            'refund_claimable' => $status === 'Cancelled' && empty($data['code']) && ! $order->code,
         ]);
     }
 
@@ -646,93 +696,174 @@ class NumberController extends Controller
         ], fn ($v) => $v !== null));
     }
 
+    /**
+     * Cancels an order and refunds it — exactly once.
+     *
+     * Two guards stop a double refund:
+     *
+     *   1. A per-order cache lock, so two cancels for the same order never
+     *      reach upstream together. Without it, the second request got
+     *      ALREADY_CANCELLED back, read that as "upstream voided it", and
+     *      refunded a second time.
+     *   2. An atomic claim on `refunded_at` (UPDATE ... WHERE refunded_at IS
+     *      NULL). Even if the lock is lost, only one request — cancel, admin
+     *      refund, anything — can flip that column, and only it may credit.
+     */
     public function cancel(string $ref, Request $request): JsonResponse
     {
         $order = $this->resolveRef($request, $ref);
 
         // Already settled — don't let a double click refund twice.
         if ($order->refunded_at) {
-            return $this->ok([
-                'ref'     => $ref,
-                'status'  => 'Cancelled',
-                'outcome' => 'refunded',
-                'refund'  => [
-                    'amount'    => (float) $order->refund_amount,
-                    'formatted' => $this->format((float) $order->refund_amount),
-                ],
-            ]);
+            return $this->alreadyRefunded($order);
         }
 
-        $response = $this->call($order->gateway, 'post', '/cancel/' . rawurlencode($order->activation_id));
-
-        // The code landed in the race window. That is a win, not a failure —
-        // the customer keeps the code and the charge stands.
-        if (($response['code'] ?? null) === 'CODE_RECEIVED') {
-            $code = $response['data']['code'] ?? null;
-            $this->syncStatus($order, 'Completed', $code);
-
+        // A delivered code is never refundable; don't even ask upstream.
+        if ($order->status === 'completed' && $order->code) {
             return $this->ok([
                 'ref'     => $ref,
                 'status'  => 'Completed',
-                'code'    => $code,
+                'code'    => $order->code,
                 'outcome' => 'code_received',
             ]);
         }
 
-        // Upstream already voided this order (it timed out, was cancelled on
-        // their side, or they no longer know it). If we never received a code,
-        // the customer paid for nothing — refund locally rather than trapping
-        // their money behind an upstream error. Guard on `! $order->code` so a
-        // delivered order can never be refunded this way.
-        $goneUpstream = in_array($response['code'] ?? null, [
-            'ALREADY_CANCELLED',
-            'ORDER_CANCELLED',
-            'ORDER_NOT_FOUND',
-            'NOT_FOUND',
-            'ORDER_EXPIRED',
-            'EXPIRED',
-        ], true);
+        $lock = Cache::lock('numbers:cancel:' . $order->id, 30);
 
-        if (! $response['ok'] && ! ($goneUpstream && ! $order->code)) {
-            return $this->fail($response);
+        if (! $lock->get()) {
+            return $this->fail(['code' => 'IN_PROGRESS', 'status' => 422]);
         }
 
-        // Note when we refund an order the upstream had already dropped, so the
-        // rate of these is visible — a high rate points at a provider problem.
-        if ($goneUpstream) {
-            Log::info('Refunding upstream-voided order', [
-                'ref'  => $order->reference,
-                'code' => $response['code'] ?? null,
+        try {
+            // Re-read under the lock: another request may have finished
+            // between resolveRef() and acquiring the lock.
+            $order = DB::table('verifications')->where('id', $order->id)->first();
+
+            if ($order->refunded_at) {
+                return $this->alreadyRefunded($order);
+            }
+
+            if ($order->code) {
+                return $this->ok([
+                    'ref'     => $ref,
+                    'status'  => 'Completed',
+                    'code'    => $order->code,
+                    'outcome' => 'code_received',
+                ]);
+            }
+
+            $response = $this->call($order->gateway, 'post', '/cancel/' . rawurlencode($order->activation_id));
+
+            // The code landed in the race window. That is a win, not a failure —
+            // the customer keeps the code and the charge stands.
+            if (($response['code'] ?? null) === 'CODE_RECEIVED') {
+                $code = $response['data']['code'] ?? null;
+                $this->syncStatus($order, 'Completed', $code);
+
+                return $this->ok([
+                    'ref'     => $ref,
+                    'status'  => 'Completed',
+                    'code'    => $code,
+                    'outcome' => 'code_received',
+                ]);
+            }
+
+            // Upstream already voided this order (it timed out, was cancelled on
+            // their side, or they no longer know it). If we never received a code,
+            // the customer paid for nothing — refund locally rather than trapping
+            // their money behind an upstream error. The atomic claim below is
+            // what makes this safe against repeats.
+            $goneUpstream = in_array($response['code'] ?? null, [
+                'ALREADY_CANCELLED',
+                'ORDER_CANCELLED',
+                'ORDER_NOT_FOUND',
+                'NOT_FOUND',
+                'ORDER_EXPIRED',
+                'EXPIRED',
+            ], true);
+
+            if (! $response['ok'] && ! $goneUpstream) {
+                return $this->fail($response);
+            }
+
+            $refund = (float) $order->price;
+
+            // The upstream cancel has already succeeded, so the refund must not be
+            // lost if our own write fails — both statements go in one transaction.
+            $balanceAfter = DB::transaction(function () use ($order, $refund) {
+                // Atomic claim: only ONE request can move refunded_at from NULL.
+                // A concurrent request blocks on the row lock, then matches 0 rows.
+                $claimed = DB::table('verifications')
+                    ->where('id', $order->id)
+                    ->whereNull('refunded_at')
+                    ->whereNull('code')
+                    ->update([
+                        'status'        => 'cancelled',
+                        'refund_amount' => $refund,
+                        'refunded_at'   => now(),
+                        'updated_at'    => now(),
+                    ]);
+
+                if ($claimed === 0) {
+                    return null;    // refunded elsewhere, or a code arrived
+                }
+
+                return $this->credit(
+                    $order->user_id,
+                    $refund,
+                    'refund',
+                    $order->id,
+                    'Refund for ' . $order->reference
+                );
+            });
+
+            if ($balanceAfter === null) {
+                Log::warning('Blocked a duplicate refund', ['ref' => $order->reference]);
+
+                $fresh = DB::table('verifications')->where('id', $order->id)->first();
+
+                return $fresh->refunded_at
+                    ? $this->alreadyRefunded($fresh)
+                    : $this->ok([
+                        'ref'     => $ref,
+                        'status'  => 'Completed',
+                        'code'    => $fresh->code,
+                        'outcome' => 'code_received',
+                    ]);
+            }
+
+            // Note when we refund an order the upstream had already dropped, so the
+            // rate of these is visible — a high rate points at a provider problem.
+            if ($goneUpstream) {
+                Log::info('Refunding upstream-voided order', [
+                    'ref'  => $order->reference,
+                    'code' => $response['code'] ?? null,
+                ]);
+            }
+
+            return $this->ok([
+                'ref'     => $ref,
+                'status'  => 'Cancelled',
+                'outcome' => 'refunded',
+                'refund'  => ['amount' => $refund, 'formatted' => $this->format($refund)],
+                'balance' => $this->moneyRaw($balanceAfter),
             ]);
+        } finally {
+            $lock->release();
         }
+    }
 
-        $refund = (float) $order->price;
-
-        // The upstream cancel has already succeeded, so the refund must not be
-        // lost if our own write fails — both statements go in one transaction.
-        $balanceAfter = DB::transaction(function () use ($order, $refund) {
-            DB::table('verifications')->where('id', $order->id)->update([
-                'status'        => 'cancelled',
-                'refund_amount' => $refund,
-                'refunded_at'   => now(),
-                'updated_at'    => now(),
-            ]);
-
-            return $this->credit(
-                $order->user_id,
-                $refund,
-                'refund',
-                $order->id,
-                'Refund for ' . $order->reference
-            );
-        });
-
+    /** The response for an order that has already been refunded. Moves no money. */
+    private function alreadyRefunded(object $order): JsonResponse
+    {
         return $this->ok([
-            'ref'     => $ref,
+            'ref'     => $order->reference,
             'status'  => 'Cancelled',
             'outcome' => 'refunded',
-            'refund'  => ['amount' => $refund, 'formatted' => $this->format($refund)],
-            'balance' => $this->moneyRaw($balanceAfter),
+            'refund'  => [
+                'amount'    => (float) $order->refund_amount,
+                'formatted' => $this->format((float) $order->refund_amount),
+            ],
         ]);
     }
 
@@ -808,14 +939,8 @@ class NumberController extends Controller
         return ['ok' => false, 'status' => $status, 'data' => null, 'message' => null, 'code' => $code];
     }
 
-    /**
-     * Cached so purchase() can read cost without trusting the browser.
-     *
-     * A second, long-lived copy is kept as a fallback. Upstream hiccups are
-     * routine — rate limits, brief outages — and a four-minute cache expiring
-     * during one should not blank the whole tab. Prices go slightly stale
-     * instead, and the purchase itself still validates server-side.
-     */
+    // ══════════════════════ Admin catalog ════════════════════
+
     /**
      * Every service ENTRY in the USA pool — one row per code, not collapsed by
      * name. The upstream lists e.g. four "WhatsApp" codes at different prices;
@@ -841,9 +966,7 @@ class NumberController extends Controller
             ->all();
     }
 
-    /**
-     * Distinct country names in the global pool — for the admin catalog page.
-     */
+    /** Distinct country names in the global pool — for the admin catalog page. */
     public function catalogCountryNames(): array
     {
         $c = $this->countries();
@@ -898,6 +1021,16 @@ class NumberController extends Controller
             ->values()->all();
     }
 
+    // ═════════════════════════ Caches ════════════════════════
+
+    /**
+     * Cached so purchase() can read cost without trusting the browser.
+     *
+     * A second, long-lived copy is kept as a fallback. Upstream hiccups are
+     * routine — rate limits, brief outages — and a four-minute cache expiring
+     * during one should not blank the whole tab. Prices go slightly stale
+     * instead, and the purchase itself still validates server-side.
+     */
     private function usaCatalogue(bool $fresh = false): array
     {
         $key  = 'numbers:usa:catalogue';
@@ -1187,7 +1320,6 @@ class NumberController extends Controller
      */
     private function message(array $response): string
     {
-
         return match ($response['code'] ?? null) {
             'OUT_OF_STOCK'              => __('That service just sold out. Pick another or try again in a moment.'),
             'PROVIDER_DISABLED'         => __('That service is switched off right now.'),
